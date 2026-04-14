@@ -1,0 +1,17 @@
+{
+  "name": "gbrain-capture",
+  "version": "0.1.0",
+  "description": "Capture web content and make it searchable by your AI via GBrain",
+  "family": "bundle-plugin",
+  "mcpServers": {
+    "gbrain": {
+      "command": "./bin/gbrain",
+      "args": ["serve"]
+    }
+  },
+  "openclaw": {
+    "compat": {
+      "pluginApi": ">=2026.4.0"
+    }
+  }
+}

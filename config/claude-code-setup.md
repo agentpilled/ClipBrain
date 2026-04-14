@@ -1,31 +1,122 @@
-# Setting up Claude Code with GBrain MCP Server
+# Connecting GBrain Capture with your AI
 
-## 1. Add GBrain MCP server to Claude Code
+GBrain exposes your captured knowledge via MCP (Model Context Protocol). Any AI tool that supports MCP can search what you've saved.
 
-Add the following to your Claude Code MCP settings (`~/.claude/settings.json` or project `.claude/settings.json`), replacing `/path/to/gbrain-capture` with the actual path where you cloned this repo:
+---
+
+## Claude Code
+
+Add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings.json`):
 
 ```json
 {
   "mcpServers": {
     "gbrain": {
       "command": "/path/to/gbrain-capture/bin/gbrain",
-      "args": ["mcp"]
+      "args": ["serve"]
     }
   }
 }
 ```
 
-Restart Claude Code after saving. You should see the GBrain tools available in your tool list.
+Replace `/path/to/gbrain-capture` with where you cloned the repo.
 
-## 2. Add to CLAUDE.md
+Restart Claude Code. You should see GBrain tools in your tool list.
 
-Add the following to your project's `CLAUDE.md` (or `~/.claude/CLAUDE.md` for global access):
+---
+
+## OpenClaw
+
+OpenClaw supports MCP via its plugin system. Two options:
+
+### Option A: Plugin manifest (recommended)
+
+Copy the plugin manifest into your OpenClaw extensions:
+
+```bash
+mkdir -p ~/.openclaw/extensions/gbrain-capture
+cp /path/to/gbrain-capture/config/openclaw-plugin.json ~/.openclaw/extensions/gbrain-capture/plugin.json
+```
+
+Then add to your `openclaw.json` plugins section:
+
+```json
+{
+  "plugins": {
+    "allow": ["gbrain-capture"],
+    "load": {
+      "paths": ["~/.openclaw/extensions/gbrain-capture"]
+    }
+  }
+}
+```
+
+### Option B: Direct MCP config
+
+If your OpenClaw version supports `mcpServers` in config, add:
+
+```json
+{
+  "mcpServers": {
+    "gbrain": {
+      "command": "/path/to/gbrain-capture/bin/gbrain",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+---
+
+## Claude Desktop
+
+Open Settings > Developer > Edit Config. Add to `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "gbrain": {
+      "command": "/path/to/gbrain-capture/bin/gbrain",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop.
+
+---
+
+## Cursor
+
+Open Settings > MCP. Add a new server:
+
+- Name: `gbrain`
+- Command: `/path/to/gbrain-capture/bin/gbrain serve`
+
+---
+
+## Any MCP client
+
+The MCP server command is:
+
+```
+/path/to/gbrain-capture/bin/gbrain serve
+```
+
+It communicates via stdio. Connect it like any other MCP server.
+
+---
+
+## System prompt (recommended for all clients)
+
+Add this to your CLAUDE.md, system prompt, or equivalent config:
 
 ```
 You have access to the user's personal knowledge base via the GBrain MCP tools.
 
 Key tools:
-- `query` — Hybrid semantic + keyword search across the user's saved articles, notes, and highlights
+- `query` — Hybrid semantic + keyword search across saved articles, notes, and highlights
 - `search` — Keyword-only search (faster, works even when embeddings are missing)
 
 Use these tools when:
