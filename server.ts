@@ -822,7 +822,7 @@ async function handleCaptureYouTube(req: Request): Promise<Response> {
     return corsResponse(400, { error: 'Invalid JSON body' });
   }
 
-  const { url, videoId, title, channel, transcript } = body;
+  const { url, videoId, title, channel } = body;
 
   if (!videoId || typeof videoId !== 'string') {
     return corsResponse(400, { error: 'Missing required field: videoId' });
@@ -831,9 +831,48 @@ async function handleCaptureYouTube(req: Request): Promise<Response> {
     return corsResponse(400, { error: 'Missing required field: title' });
   }
 
-  // Transcript is now extracted client-side by the content script
-  if (!transcript || !Array.isArray(transcript) || transcript.length === 0) {
-    return corsResponse(422, { error: 'No transcript data provided' });
+  // Extract transcript server-side via yt-dlp (robust, handles auth/tokens)
+  let transcript: Array<{ start: number; text: string }> = [];
+  try {
+    const tmpFile = `/tmp/clipbrain-yt-${videoId}`;
+    const proc = Bun.spawn(
+      ['yt-dlp', '--write-auto-sub', '--sub-lang', 'en', '--skip-download', '--sub-format', 'json3', '-o', tmpFile, `https://www.youtube.com/watch?v=${videoId}`],
+      { stdout: 'pipe', stderr: 'pipe' }
+    );
+    const exitCode = await proc.exited;
+
+    if (exitCode !== 0) {
+      const stderr = await new Response(proc.stderr).text();
+      console.error('[youtube] yt-dlp failed:', stderr.slice(0, 200));
+      return corsResponse(422, { error: 'No transcript available for this video' });
+    }
+
+    const subFile = `${tmpFile}.en.json3`;
+    const fs = require('fs');
+    if (!fs.existsSync(subFile)) {
+      return corsResponse(422, { error: 'No transcript available for this video' });
+    }
+
+    const subData = JSON.parse(fs.readFileSync(subFile, 'utf-8'));
+    transcript = (subData.events || [])
+      .filter((e: any) => e.segs)
+      .map((e: any) => ({
+        start: Math.floor((e.tStartMs || 0) / 1000),
+        text: (e.segs || []).map((s: any) => s.utf8 || '').join('').trim(),
+      }))
+      .filter((s: any) => s.text);
+
+    // Cleanup temp files
+    try { fs.unlinkSync(subFile); } catch {}
+
+    console.log(`[youtube] extracted ${transcript.length} segments via yt-dlp`);
+  } catch (err: any) {
+    console.error('[youtube] yt-dlp error:', err.message);
+    return corsResponse(422, { error: 'Failed to extract transcript' });
+  }
+
+  if (transcript.length === 0) {
+    return corsResponse(422, { error: 'No transcript available for this video' });
   }
 
   const channelSlug = channel ? slugifyText(channel) : 'unknown-channel';
@@ -841,11 +880,9 @@ async function handleCaptureYouTube(req: Request): Promise<Response> {
   const slug = `youtube/${channelSlug}/${titleSlug}`;
   const timestamp = new Date().toISOString();
 
-  // Compute duration from last segment
   const lastSegment = transcript[transcript.length - 1];
   const duration = lastSegment ? lastSegment.start : 0;
 
-  // Build markdown with timestamps
   const transcriptLines = transcript.map(
     (s: { start: number; text: string }) => `[${formatTimestamp(s.start)}] ${s.text}`
   );

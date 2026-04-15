@@ -81,18 +81,11 @@ async function handleCapture(data, tabId) {
 }
 
 async function handleYouTubeCapture(data, tabId) {
-  // If the content script couldn't extract a transcript, notify immediately
-  if (!data.transcript || !data.transcript.length) {
-    notifyTab(tabId, false, "No transcript available for this video");
-    return;
-  }
-
   const payload = {
     url: data.url,
     videoId: data.videoId,
     title: data.title,
     channel: data.channel,
-    transcript: data.transcript, // segments already extracted client-side
   };
 
   try {
