@@ -370,6 +370,25 @@ body {
   margin: 12px 0;
 }
 
+/* ─── Full View Link ────────────────────────────────────────────── */
+
+.full-view-link {
+  text-align: center;
+  padding: 10px 16px 12px;
+  border-top: 1px solid #2a2a3e;
+}
+
+.full-view-link a {
+  color: #555;
+  text-decoration: none;
+  font-size: 11px;
+  transition: color 0.2s ease;
+}
+
+.full-view-link a:hover {
+  color: #4ade80;
+}
+
 /* ─── Scrollbar ──────────────────────────────────────────────────── */
 
 body::-webkit-scrollbar {

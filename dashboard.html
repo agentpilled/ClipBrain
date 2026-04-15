@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GBrain — Knowledge Base</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a14;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e1e3a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2a2a4a; }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px;
+      border-bottom: 1px solid #1e1e3a;
+      position: sticky;
+      top: 0;
+      background: #0a0a14;
+      z-index: 100;
+    }
+
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-title span { margin-right: 6px; }
+
+    .search-box {
+      position: relative;
+      width: 320px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 16px 10px 40px;
+      background: #12122a;
+      border: 1px solid #1e1e3a;
+      border-radius: 10px;
+      color: #e0e0e0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input::placeholder { color: #555; }
+
+    .search-input:focus {
+      border-color: #4ade80;
+      box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #555;
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    /* Container */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 32px 64px;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: #12122a;
+      border: 1px solid #1e1e3a;
+      border-radius: 12px;
+      padding: 16px 24px;
+      min-width: 140px;
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #4ade80;
+      line-height: 1.2;
+    }
+
+    .stat-value.kindle { color: #f59e0b; }
+
+    .stat-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+
+    .section-title.kindle { color: #f59e0b; }
+    .section-title.web { color: #4ade80; }
+
+    /* Cards */
+    .card {
+      background: #12122a;
+      border: 1px solid #1e1e3a;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.15s;
+    }
+
+    .card:hover {
+      border-color: #2e2e4a;
+      background: #16163a;
+    }
+
+    .card.expanded {
+      border-color: #2e2e4a;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .card-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .card-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e0e0e0;
+      line-height: 1.4;
+    }
+
+    .card-meta {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .card-meta .kindle-accent { color: #f59e0b; }
+    .card-meta .green-accent { color: #4ade80; }
+
+    .card-chevron {
+      color: #555;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 4px;
+      transition: transform 0.2s;
+    }
+
+    .card.expanded .card-chevron {
+      transform: rotate(90deg);
+    }
+
+    /* Highlights preview (collapsed) */
+    .highlights-preview {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #1a1a30;
+    }
+
+    .highlight-item {
+      padding: 8px 0;
+      border-left: 2px solid #f59e0b;
+      padding-left: 12px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #ccc;
+      line-height: 1.5;
+    }
+
+    .highlight-item.note {
+      border-left-color: #4ade80;
+      font-style: italic;
+      color: #aaa;
+    }
+
+    .highlight-item blockquote {
+      margin: 0;
+    }
+
+    /* Expanded content */
+    .card-content {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #1a1a30;
+    }
+
+    .card.expanded .card-content {
+      display: block;
+    }
+
+    .expand-hint {
+      font-size: 12px;
+      color: #555;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+
+    .expand-hint:hover { color: #888; }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 48px;
+      color: #555;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 2px solid #1e1e3a;
+      border-top-color: #4ade80;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Search results */
+    .search-results-container {
+      display: none;
+    }
+
+    .search-results-container.active {
+      display: block;
+    }
+
+    .search-result {
+      background: #12122a;
+      border: 1px solid #1e1e3a;
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.15s;
+    }
+
+    .search-result:hover {
+      border-color: #2e2e4a;
+      background: #16163a;
+    }
+
+    .search-result-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    .search-result-slug {
+      font-size: 11px;
+      color: #555;
+      margin-top: 2px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .search-result-snippet {
+      font-size: 13px;
+      color: #888;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 32px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 64px 24px;
+      color: #555;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .header { padding: 16px; }
+      .container { padding: 16px; }
+      .search-box { width: 200px; }
+      .stat-card { min-width: 100px; padding: 12px 16px; }
+      .stat-value { font-size: 22px; }
+    }
+
+    @media (max-width: 420px) {
+      .header { flex-wrap: wrap; gap: 12px; }
+      .search-box { width: 100%; }
+      .stats-bar { gap: 8px; }
+      .stat-card { min-width: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-title"><span>&#x1F9E0;</span> GBrain</div>
+    <div class="search-box">
+      <span class="search-icon">&#x1F50D;</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search your knowledge base..." autocomplete="off">
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <div>Loading your knowledge base...</div>
+    </div>
+
+    <div id="content" style="display:none">
+      <!-- Stats -->
+      <div class="stats-bar" id="statsBar"></div>
+
+      <!-- Search results -->
+      <div class="search-results-container" id="searchResults">
+        <div class="section-title">Search Results</div>
+        <div id="searchResultsList"></div>
+      </div>
+
+      <!-- Main content -->
+      <div id="mainContent">
+        <div class="section" id="kindleSection" style="display:none">
+          <div class="section-title kindle">Kindle Books</div>
+          <div id="kindleList"></div>
+        </div>
+
+        <div class="section" id="webSection" style="display:none">
+          <div class="section-title web">Web Captures</div>
+          <div id="webList"></div>
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display:none">
+          <h3>Your knowledge base is empty</h3>
+          <p>Start capturing pages with the Chrome extension or import Kindle highlights.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+
+    // State
+    let allItems = [];
+    let searchTimeout = null;
+
+    // ── Init ──────────────────────────────────────────────────────────
+    async function init() {
+      try {
+        const [statsRes, recentRes] = await Promise.all([
+          fetch(API + '/api/stats'),
+          fetch(API + '/api/recent?limit=200')
+        ]);
+
+        const stats = await statsRes.json();
+        const recent = await recentRes.json();
+
+        allItems = recent.results || [];
+
+        renderStats(stats);
+        renderItems(allItems);
+      } catch (err) {
+        console.error('Failed to load:', err);
+        document.getElementById('loading').innerHTML =
+          '<div style="color:#f87171">Failed to connect to server</div>';
+        return;
+      }
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────
+    function renderStats(stats) {
+      const bar = document.getElementById('statsBar');
+      bar.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value kindle">${stats.books || 0}</div>
+          <div class="stat-label">Books</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.articles || 0}</div>
+          <div class="stat-label">Articles</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.highlights || 0}</div>
+          <div class="stat-label">Highlights</div>
+        </div>
+      `;
+    }
+
+    // ── Render Items ──────────────────────────────────────────────────
+    function renderItems(items) {
+      const kindleItems = [];
+      const webItems = [];
+
+      // Group kindle items by book (by the first two slug segments: kindle/author/title)
+      const kindleBooks = {};
+
+      for (const item of items) {
+        if (item.slug && item.slug.startsWith('kindle/')) {
+          // Group by book: take the slug path as the book key
+          const bookKey = item.slug;
+          if (!kindleBooks[bookKey]) {
+            kindleBooks[bookKey] = {
+              slug: item.slug,
+              title: item.title || formatSlug(item.slug),
+              date: item.date,
+              type: item.type
+            };
+          }
+        } else if (item.slug && item.slug.startsWith('web/')) {
+          webItems.push(item);
+        }
+      }
+
+      const kindleSection = document.getElementById('kindleSection');
+      const webSection = document.getElementById('webSection');
+      const emptyState = document.getElementById('emptyState');
+
+      const books = Object.values(kindleBooks);
+
+      if (books.length === 0 && webItems.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      // Render kindle books
+      if (books.length > 0) {
+        kindleSection.style.display = 'block';
+        const list = document.getElementById('kindleList');
+        list.innerHTML = '';
+
+        for (const book of books) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.dataset.slug = book.slug;
+
+          // Parse title: "Book Title by Author" or just title from slug
+          const titleInfo = parseBookTitle(book.title, book.slug);
+
+          card.innerHTML = `
+            <div class="card-header">
+              <span class="card-icon">&#x1F4D6;</span>
+              <div class="card-body">
+                <div class="card-title">${escapeHtml(titleInfo.title)}</div>
+                <div class="card-meta">
+                  ${titleInfo.author ? escapeHtml(titleInfo.author) : ''}
+                  ${book.date ? ' &middot; ' + formatDate(book.date) : ''}
+                </div>
+              </div>
+              <span class="card-chevron">&#x25B6;</span>
+            </div>
+            <div class="card-content">
+              <div class="loading" style="padding:16px"><div class="loading-spinner"></div></div>
+            </div>
+          `;
+
+          card.addEventListener('click', () => toggleCard(card));
+          list.appendChild(card);
+        }
+      }
+
+      // Render web captures
+      if (webItems.length > 0) {
+        webSection.style.display = 'block';
+        const list = document.getElementById('webList');
+        list.innerHTML = '';
+
+        for (const item of webItems) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.dataset.slug = item.slug;
+
+          const domain = extractDomain(item.slug);
+
+          card.innerHTML = `
+            <div class="card-header">
+              <span class="card-icon">&#x1F310;</span>
+              <div class="card-body">
+                <div class="card-title">${escapeHtml(item.title || formatSlug(item.slug))}</div>
+                <div class="card-meta">
+                  ${domain ? escapeHtml(domain) : ''}
+                  ${item.date ? ' &middot; ' + formatDate(item.date) : ''}
+                </div>
+              </div>
+              <span class="card-chevron">&#x25B6;</span>
+            </div>
+            <div class="card-content">
+              <div class="loading" style="padding:16px"><div class="loading-spinner"></div></div>
+            </div>
+          `;
+
+          card.addEventListener('click', () => toggleCard(card));
+          list.appendChild(card);
+        }
+      }
+    }
+
+    // ── Expand/Collapse Card ──────────────────────────────────────────
+    async function toggleCard(card) {
+      const wasExpanded = card.classList.contains('expanded');
+
+      if (wasExpanded) {
+        card.classList.remove('expanded');
+        return;
+      }
+
+      card.classList.add('expanded');
+
+      const contentEl = card.querySelector('.card-content');
+      const slug = card.dataset.slug;
+
+      // Check if already loaded
+      if (contentEl.dataset.loaded) return;
+
+      try {
+        const res = await fetch(API + '/api/page?slug=' + encodeURIComponent(slug));
+        const data = await res.json();
+
+        if (data.content) {
+          contentEl.innerHTML = renderPageContent(data.content, slug.startsWith('kindle/'));
+        } else {
+          contentEl.innerHTML = '<div style="color:#555;font-size:13px">No content available</div>';
+        }
+        contentEl.dataset.loaded = '1';
+      } catch (err) {
+        contentEl.innerHTML = '<div style="color:#f87171;font-size:13px">Failed to load content</div>';
+      }
+    }
+
+    // ── Render page content ───────────────────────────────────────────
+    function renderPageContent(content, isKindle) {
+      // Strip frontmatter
+      const fmMatch = content.match(/^---\n[\s\S]*?\n---\n/);
+      let body = fmMatch ? content.slice(fmMatch[0].length).trim() : content.trim();
+
+      if (isKindle) {
+        return renderKindleContent(body);
+      }
+
+      // For web captures, render as simple text with paragraphs
+      const paragraphs = body.split(/\n\n+/);
+      let html = '';
+      for (const p of paragraphs) {
+        const trimmed = p.trim();
+        if (!trimmed) continue;
+        if (trimmed.startsWith('> ')) {
+          html += `<div class="highlight-item">${escapeHtml(trimmed.replace(/^>\s*/gm, ''))}</div>`;
+        } else if (trimmed.startsWith('# ')) {
+          html += `<div style="font-size:16px;font-weight:700;margin:16px 0 8px;color:#e0e0e0">${escapeHtml(trimmed.replace(/^#+\s*/, ''))}</div>`;
+        } else if (trimmed.startsWith('## ')) {
+          html += `<div style="font-size:14px;font-weight:600;margin:14px 0 6px;color:#ccc">${escapeHtml(trimmed.replace(/^#+\s*/, ''))}</div>`;
+        } else {
+          html += `<div style="margin-bottom:8px;font-size:13px;color:#bbb;line-height:1.6">${escapeHtml(trimmed)}</div>`;
+        }
+      }
+      return html || '<div style="color:#555;font-size:13px">No content</div>';
+    }
+
+    function renderKindleContent(body) {
+      const lines = body.split('\n');
+      let html = '';
+      let highlightCount = 0;
+      let noteCount = 0;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        if (trimmed.startsWith('> ')) {
+          highlightCount++;
+          const text = trimmed.replace(/^>\s*/, '');
+          html += `<div class="highlight-item">${escapeHtml(text)}</div>`;
+        } else if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+          const heading = trimmed.replace(/^#+\s*/, '');
+          html += `<div style="font-size:14px;font-weight:600;margin:16px 0 8px;color:#f59e0b">${escapeHtml(heading)}</div>`;
+        } else if (trimmed.startsWith('**Note:**') || trimmed.startsWith('*Note:*')) {
+          noteCount++;
+          const noteText = trimmed.replace(/^\*+Note:\*+\s*/, '');
+          html += `<div class="highlight-item note">${escapeHtml(noteText)}</div>`;
+        } else if (trimmed.startsWith('Note:') || trimmed.startsWith('note:')) {
+          noteCount++;
+          html += `<div class="highlight-item note">${escapeHtml(trimmed.replace(/^[Nn]ote:\s*/, ''))}</div>`;
+        } else if (!trimmed.startsWith('---') && !trimmed.startsWith('title:') && !trimmed.startsWith('type:') && !trimmed.startsWith('tags:') && !trimmed.startsWith('source_url:') && !trimmed.startsWith('captured_at:')) {
+          html += `<div style="margin-bottom:6px;font-size:13px;color:#999;line-height:1.5">${escapeHtml(trimmed)}</div>`;
+        }
+      }
+
+      if (highlightCount > 0 || noteCount > 0) {
+        const summary = [];
+        if (highlightCount) summary.push(`${highlightCount} highlight${highlightCount !== 1 ? 's' : ''}`);
+        if (noteCount) summary.push(`${noteCount} note${noteCount !== 1 ? 's' : ''}`);
+        html = `<div style="font-size:12px;color:#888;margin-bottom:12px">${summary.join(' &middot; ')}</div>` + html;
+      }
+
+      return html || '<div style="color:#555;font-size:13px">No highlights found</div>';
+    }
+
+    // ── Search ────────────────────────────────────────────────────────
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const searchResultsList = document.getElementById('searchResultsList');
+    const mainContent = document.getElementById('mainContent');
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      const q = searchInput.value.trim();
+
+      if (!q) {
+        searchResults.classList.remove('active');
+        mainContent.style.display = 'block';
+        return;
+      }
+
+      searchTimeout = setTimeout(() => doSearch(q), 300);
+    });
+
+    async function doSearch(query) {
+      searchResults.classList.add('active');
+      mainContent.style.display = 'none';
+      searchResultsList.innerHTML = '<div class="loading" style="padding:24px"><div class="loading-spinner"></div></div>';
+
+      try {
+        const res = await fetch(API + '/api/search?q=' + encodeURIComponent(query) + '&limit=30');
+        const data = await res.json();
+
+        if (!data.results || data.results.length === 0) {
+          searchResultsList.innerHTML = '<div class="no-results">No results found</div>';
+          return;
+        }
+
+        let html = '';
+        for (const r of data.results) {
+          const isKindle = r.slug && r.slug.startsWith('kindle/');
+          const icon = isKindle ? '&#x1F4D6;' : '&#x1F310;';
+
+          html += `
+            <div class="search-result" data-slug="${escapeAttr(r.slug || '')}">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <span style="font-size:18px">${icon}</span>
+                <div style="flex:1;min-width:0">
+                  <div class="search-result-title">${escapeHtml(r.title || formatSlug(r.slug || ''))}</div>
+                  <div class="search-result-slug">${escapeHtml(r.slug || '')}</div>
+                  ${r.snippet ? `<div class="search-result-snippet">${escapeHtml(r.snippet)}</div>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        searchResultsList.innerHTML = html;
+
+        // Add click handlers for search results
+        searchResultsList.querySelectorAll('.search-result').forEach(el => {
+          el.addEventListener('click', async () => {
+            const slug = el.dataset.slug;
+            if (!slug) return;
+
+            // Navigate to the item by clearing search and expanding
+            searchInput.value = '';
+            searchResults.classList.remove('active');
+            mainContent.style.display = 'block';
+
+            // Find and expand the matching card
+            const card = document.querySelector(`.card[data-slug="${CSS.escape(slug)}"]`);
+            if (card) {
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              if (!card.classList.contains('expanded')) {
+                toggleCard(card);
+              }
+            }
+          });
+        });
+      } catch (err) {
+        searchResultsList.innerHTML = '<div class="no-results" style="color:#f87171">Search failed</div>';
+      }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────
+    function parseBookTitle(title, slug) {
+      // Try "Book Title by Author" format
+      const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
+      if (byMatch) {
+        return { title: byMatch[1].trim(), author: byMatch[2].trim() };
+      }
+
+      // Try to extract from slug: kindle/author/title
+      const parts = slug.split('/');
+      if (parts.length >= 3) {
+        return {
+          title: title || parts.slice(2).join(' ').replace(/-/g, ' '),
+          author: parts[1].replace(/-/g, ' ')
+        };
+      }
+
+      return { title: title, author: null };
+    }
+
+    function extractDomain(slug) {
+      // web/example-com/path -> example.com
+      const parts = slug.split('/');
+      if (parts.length >= 2) {
+        return parts[1].replace(/-/g, '.');
+      }
+      return null;
+    }
+
+    function formatSlug(slug) {
+      const last = slug.split('/').pop() || slug;
+      return last.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function formatDate(dateStr) {
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const now = new Date();
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (d.getFullYear() === now.getFullYear()) {
+          return months[d.getMonth()] + ' ' + d.getDate();
+        }
+        return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+      } catch {
+        return dateStr;
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // ── Start ─────────────────────────────────────────────────────────
+    init();
+  </script>
+</body>
+</html>

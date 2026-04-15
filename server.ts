@@ -271,6 +271,32 @@ async function handleStats(): Promise<Response> {
   }
 }
 
+async function handlePage(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const slug = url.searchParams.get('slug') || '';
+
+  if (!slug.trim()) {
+    return corsResponse(400, { error: 'Missing required parameter: slug' });
+  }
+
+  try {
+    const output = await gbrainExec(['get', slug]);
+
+    // Try to parse title from frontmatter
+    let title = slug.split('/').pop()?.replace(/-/g, ' ') || slug;
+    let type = 'unknown';
+    const titleMatch = output.match(/^title:\s*"?(.+?)"?\s*$/m);
+    if (titleMatch) title = titleMatch[1];
+    const typeMatch = output.match(/^type:\s*(.+?)\s*$/m);
+    if (typeMatch) type = typeMatch[1];
+
+    return corsResponse(200, { slug, title, type, content: output });
+  } catch (err: any) {
+    console.error('[page]', err.message);
+    return corsResponse(404, { error: 'Page not found' });
+  }
+}
+
 function parseGbrainOutput(output: string, limit: number): Array<Record<string, string>> {
   const lines = output.trim().split('\n').filter(Boolean);
   const results: Array<Record<string, string>> = [];
@@ -396,6 +422,12 @@ const server = Bun.serve({
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
+    // Dashboard
+    if (url.pathname === '/' && req.method === 'GET') {
+      const html = Bun.file(import.meta.dir + '/dashboard.html');
+      return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+    }
+
     // Health check
     if (url.pathname === '/health' && req.method === 'GET') {
       return corsResponse(200, { status: 'ok' });
@@ -419,6 +451,11 @@ const server = Bun.serve({
     // Stats endpoint
     if (url.pathname === '/api/stats' && req.method === 'GET') {
       return handleStats();
+    }
+
+    // Page content endpoint
+    if (url.pathname === '/api/page' && req.method === 'GET') {
+      return handlePage(req);
     }
 
     return corsResponse(404, { error: 'Not found' });
