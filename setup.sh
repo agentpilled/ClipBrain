@@ -182,6 +182,47 @@ JSONEOF
   echo "  Obsidian not found (install it later and re-run setup)"
 fi
 
+# ─── Step 5b: Detect OpenAI API key for smart processing ────────────────────
+echo ""
+echo "→ Checking for AI processing..."
+
+if [ -n "$OPENAI_API_KEY" ]; then
+  echo "  ✓ Smart processing enabled (GPT-4o-mini)"
+  # Update .clipbrain.json processing.enabled = true
+  if command -v jq &>/dev/null; then
+    TMP=$(mktemp)
+    jq '.processing = {"enabled": true, "model": "gpt-4o-mini", "provider": "openai"}' "$SCRIPT_DIR/.clipbrain.json" > "$TMP" && mv "$TMP" "$SCRIPT_DIR/.clipbrain.json"
+  elif command -v python3 &>/dev/null; then
+    python3 -c "
+import json
+with open('$SCRIPT_DIR/.clipbrain.json', 'r') as f:
+    data = json.load(f)
+data['processing'] = {'enabled': True, 'model': 'gpt-4o-mini', 'provider': 'openai'}
+with open('$SCRIPT_DIR/.clipbrain.json', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"
+  fi
+else
+  echo "  OPENAI_API_KEY not set — smart processing disabled"
+  echo "  Set it to enable AI summaries, tags, and connections"
+  # Update .clipbrain.json processing.enabled = false
+  if command -v jq &>/dev/null; then
+    TMP=$(mktemp)
+    jq '.processing = {"enabled": false, "model": "gpt-4o-mini", "provider": "openai"}' "$SCRIPT_DIR/.clipbrain.json" > "$TMP" && mv "$TMP" "$SCRIPT_DIR/.clipbrain.json"
+  elif command -v python3 &>/dev/null; then
+    python3 -c "
+import json
+with open('$SCRIPT_DIR/.clipbrain.json', 'r') as f:
+    data = json.load(f)
+data['processing'] = {'enabled': False, 'model': 'gpt-4o-mini', 'provider': 'openai'}
+with open('$SCRIPT_DIR/.clipbrain.json', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"
+  fi
+fi
+
 # ─── Step 6: Install auto-start (macOS) ──────────────────────────────────────
 if [ "$(uname)" = "Darwin" ]; then
   echo ""

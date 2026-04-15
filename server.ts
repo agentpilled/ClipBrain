@@ -4,6 +4,7 @@
 // Receives web captures from the Chrome extension and stores them via `gbrain put` CLI.
 
 import { PDFParse } from 'pdf-parse';
+import { postProcess } from './post-process.ts';
 
 const DEFAULT_PORT = 19285;
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
@@ -553,7 +554,12 @@ async function handleUploadPdf(req: Request): Promise<Response> {
   ].join('\n') + '\n';
 
   // Fire and forget
-  gbrainPut(slug, markdown).catch((err) => {
+  gbrainPut(slug, markdown).then(() => {
+    // AI post-processing (background, never blocks)
+    postProcess(slug, markdown).catch(err => {
+      console.warn('[post-process] failed:', err.message);
+    });
+  }).catch((err) => {
     console.error(`[gbrain put] error:`, err);
   });
 
@@ -564,6 +570,105 @@ async function handleUploadPdf(req: Request): Promise<Response> {
   updateHighlightCount(slug, 1);
 
   return corsResponse(202, { status: 'accepted', slug, title, pages });
+}
+
+// ---------------------------------------------------------------------------
+// Connections endpoint
+// ---------------------------------------------------------------------------
+
+async function handleConnections(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const slug = url.searchParams.get('slug') || '';
+
+  if (!slug.trim()) {
+    return corsResponse(400, { error: 'Missing required parameter: slug' });
+  }
+
+  try {
+    const content = await gbrainExec(['get', slug]);
+
+    // Parse connections from frontmatter
+    const connections: Array<{ slug: string; reason: string }> = [];
+    const lines = content.split('\n');
+    let inConnections = false;
+
+    for (const line of lines) {
+      if (line.trim() === '---' && inConnections) break;
+      if (/^connections:\s*$/.test(line)) {
+        inConnections = true;
+        continue;
+      }
+      if (inConnections) {
+        const slugMatch = line.match(/^\s+-\s+slug:\s+(.+)$/);
+        if (slugMatch) {
+          connections.push({ slug: slugMatch[1].trim(), reason: '' });
+          continue;
+        }
+        const reasonMatch = line.match(/^\s+reason:\s+"?(.+?)"?\s*$/);
+        if (reasonMatch && connections.length > 0) {
+          connections[connections.length - 1].reason = reasonMatch[1];
+          continue;
+        }
+        // Non-connection line — stop parsing connections
+        if (!line.startsWith(' ') && line.trim()) {
+          inConnections = false;
+        }
+      }
+    }
+
+    // Parse summary
+    const summaryMatch = content.match(/^summary:\s*"?(.+?)"?\s*$/m);
+    const summary = summaryMatch ? summaryMatch[1] : '';
+
+    // Parse tags
+    const tagsMatch = content.match(/^tags:\s*\[(.+)\]\s*$/m);
+    const tags = tagsMatch ? tagsMatch[1].split(',').map(t => t.trim()) : [];
+
+    return corsResponse(200, { slug, summary, tags, connections });
+  } catch (err: any) {
+    console.error('[connections]', err.message);
+    return corsResponse(404, { error: 'Page not found' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reprocess all endpoint
+// ---------------------------------------------------------------------------
+
+async function handleReprocessAll(): Promise<Response> {
+  if (!process.env.OPENAI_API_KEY) {
+    return corsResponse(400, { error: 'OPENAI_API_KEY not set. Enable smart processing by setting this environment variable.' });
+  }
+
+  try {
+    const output = await gbrainExec(['list', '--limit', '10000']);
+    const lines = output.trim().split('\n').filter(Boolean);
+
+    let queued = 0;
+    let skipped = 0;
+
+    for (const line of lines) {
+      const parts = line.split('\t');
+      const slug = parts[0]?.trim();
+      if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/'))) continue;
+
+      try {
+        const content = await gbrainExec(['get', slug]);
+
+        // Process in background with force=true
+        postProcess(slug, content, true).catch(err => {
+          console.warn(`[reprocess-all] failed for ${slug}:`, err.message);
+        });
+        queued++;
+      } catch {
+        skipped++;
+      }
+    }
+
+    return corsResponse(202, { status: 'started', queued, skipped });
+  } catch (err: any) {
+    return corsResponse(500, { error: err.message });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -618,6 +723,11 @@ async function handleCapture(req: Request): Promise<Response> {
       const hlCount = (markdown.match(/^> /gm) || []).length;
       if (hlCount > 0) updateHighlightCount(slug, hlCount);
     }
+
+    // AI post-processing (background, never blocks)
+    postProcess(slug, markdown).catch(err => {
+      console.warn('[post-process] failed:', err.message);
+    });
   }).catch((err) => {
     console.error(`[gbrain put] error:`, err);
   });
@@ -713,6 +823,16 @@ const server = Bun.serve({
     // Obsidian bulk sync
     if (url.pathname === '/api/obsidian-sync-all' && req.method === 'POST') {
       return handleObsidianSyncAll();
+    }
+
+    // Connections endpoint
+    if (url.pathname === '/api/connections' && req.method === 'GET') {
+      return handleConnections(req);
+    }
+
+    // Reprocess all endpoint
+    if (url.pathname === '/api/reprocess-all' && req.method === 'POST') {
+      return handleReprocessAll();
     }
 
     return corsResponse(404, { error: 'Not found' });

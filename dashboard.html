@@ -482,6 +482,122 @@
 
     .upload-toast-status.success { color: var(--green); }
     .upload-toast-status.error { color: #ef4444; }
+
+    /* AI Summary */
+    .card-summary {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 0 20px 8px;
+      border-top: 1px solid var(--border);
+      margin-top: 0;
+      padding-top: 10px;
+    }
+
+    /* AI Tags */
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 0 20px 12px;
+    }
+
+    .card-tag {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--accent);
+      background: rgba(127, 109, 242, 0.1);
+      border: 1px solid rgba(127, 109, 242, 0.2);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    /* Connections */
+    .card-connections {
+      padding: 0 20px 12px;
+    }
+
+    .card-connections-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .card-connection-link {
+      font-size: 12px;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      padding: 2px 0;
+      transition: color 150ms ease;
+    }
+
+    .card-connection-link:hover { color: #a78bfa; }
+
+    .card-connection-reason {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    /* Processing indicator */
+    .processing-indicator {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--accent);
+      padding: 0 20px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .processing-spinner {
+      width: 12px;
+      height: 12px;
+      border: 1.5px solid rgba(127, 109, 242, 0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Processing disabled note */
+    .processing-note {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    /* Reprocess button */
+    .reprocess-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-family: var(--mono);
+      padding: 2px 8px;
+      cursor: pointer;
+      transition: border-color 150ms ease, color 150ms ease;
+    }
+
+    .reprocess-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .reprocess-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -546,6 +662,8 @@
       <span id="obsidianStatus">Obsidian: checking...</span>
     </div>
     <div class="status-bar-right">
+      <span class="processing-note" id="processingNote" style="display:none;">Enable smart processing with OPENAI_API_KEY</span>
+      <button class="reprocess-btn" id="reprocessBtn" style="display:none;">Reprocess all</button>
       <button class="sync-all-btn" id="connectObsidianBtn" style="display:none;">Connect Obsidian</button>
       <button class="sync-all-btn" id="syncAllBtn" style="display:none;">Sync all</button>
     </div>
@@ -573,7 +691,10 @@
         expandedSlugs: new Set(),
         contentCache: {},
         rawContentCache: {},
+        connectionsCache: {},
+        processingSlugs: new Set(),
         stats: null,
+        processingEnabled: false,
       };
 
       const $ = (sel) => document.querySelector(sel);
@@ -705,6 +826,35 @@
           if (item.pages) metaParts.push(`${item.pages} page${item.pages !== 1 ? 's' : ''}`);
           if (highlightCount) metaParts.push(`${highlightCount} highlight${highlightCount !== 1 ? 's' : ''}`);
 
+          // Check for connections data
+          const connData = state.connectionsCache[item.slug];
+          const hasSummary = connData && connData.summary;
+          const hasTags = connData && connData.tags && connData.tags.length > 0;
+          const hasConnections = connData && connData.connections && connData.connections.length > 0;
+          const isProcessing = state.processingSlugs.has(item.slug);
+
+          let extraHTML = '';
+
+          if (isProcessing) {
+            extraHTML += '<div class="processing-indicator"><div class="processing-spinner"></div>AI processing...</div>';
+          }
+
+          if (hasSummary) {
+            extraHTML += `<div class="card-summary">${escapeHTML(connData.summary)}</div>`;
+          }
+
+          if (hasTags) {
+            extraHTML += '<div class="card-tags">' + connData.tags.map(t => `<span class="card-tag">${escapeHTML(t)}</span>`).join('') + '</div>';
+          }
+
+          if (hasConnections) {
+            extraHTML += '<div class="card-connections"><div class="card-connections-title">Related</div>';
+            for (const conn of connData.connections) {
+              extraHTML += `<span class="card-connection-link" data-slug="${escapeHTML(conn.slug)}">${escapeHTML(conn.slug.split('/').pop().replace(/-/g, ' '))}</span> <span class="card-connection-reason">${escapeHTML(conn.reason)}</span><br>`;
+            }
+            extraHTML += '</div>';
+          }
+
           card.innerHTML = `
             <div class="card-header">
               <div class="card-info">
@@ -718,6 +868,7 @@
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
             </div>
+            ${extraHTML}
             <div class="card-content">
               <div class="card-content-inner"></div>
             </div>
@@ -748,6 +899,22 @@
             toggleCard(card, slug);
           });
 
+          // Connection link click — scroll to connected card
+          card.querySelectorAll('.card-connection-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const targetSlug = e.target.dataset.slug;
+              if (!targetSlug) return;
+              const targetCard = cardList.querySelector(`[data-slug="${targetSlug}"]`);
+              if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetCard.style.borderColor = 'var(--accent)';
+                setTimeout(() => { targetCard.style.borderColor = ''; }, 2000);
+              }
+            });
+          });
+
+          card.dataset.slug = slug;
           cardList.appendChild(card);
         });
       }
@@ -904,6 +1071,9 @@
           if (toExpand.length > 0) {
             renderCards(getFilteredItems());
           }
+
+          // Load connections data for visible items (background)
+          loadConnectionsForItems(results.slice(0, 20));
         } catch (err) {
           statsLine.textContent = '';
           cardList.innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not connect to server</div></div>';
@@ -1016,6 +1186,73 @@
       loadObsidianStatus();
 
       // -----------------------------------------------------------------------
+      // AI processing status + reprocess all
+      // -----------------------------------------------------------------------
+
+      const reprocessBtn = document.getElementById('reprocessBtn');
+      const processingNote = document.getElementById('processingNote');
+
+      async function loadProcessingStatus() {
+        try {
+          const config = await fetchJSON('/api/config');
+          const proc = config.processing || {};
+          state.processingEnabled = proc.enabled && !!proc.provider;
+
+          if (state.processingEnabled) {
+            reprocessBtn.style.display = '';
+            processingNote.style.display = 'none';
+          } else {
+            reprocessBtn.style.display = 'none';
+            processingNote.style.display = '';
+          }
+        } catch {
+          reprocessBtn.style.display = 'none';
+          processingNote.style.display = '';
+        }
+      }
+
+      // Load connections for visible items
+      async function loadConnectionsForItems(items) {
+        for (const item of items) {
+          if (!item.slug || state.connectionsCache[item.slug]) continue;
+          try {
+            const data = await fetchJSON(`/api/connections?slug=${encodeURIComponent(item.slug)}`);
+            if (data.summary || (data.tags && data.tags.length) || (data.connections && data.connections.length)) {
+              state.connectionsCache[item.slug] = data;
+            }
+          } catch {}
+        }
+        // Re-render with connection data
+        renderCards(getFilteredItems());
+      }
+
+      reprocessBtn.addEventListener('click', async () => {
+        reprocessBtn.disabled = true;
+        reprocessBtn.textContent = 'Processing...';
+        try {
+          const r = await fetch('/api/reprocess-all', { method: 'POST' });
+          const res = await r.json();
+          if (r.ok) {
+            reprocessBtn.textContent = `Queued ${res.queued || 0}`;
+          } else {
+            reprocessBtn.textContent = res.error || 'Failed';
+          }
+          setTimeout(() => {
+            reprocessBtn.textContent = 'Reprocess all';
+            reprocessBtn.disabled = false;
+          }, 4000);
+        } catch {
+          reprocessBtn.textContent = 'Failed';
+          setTimeout(() => {
+            reprocessBtn.textContent = 'Reprocess all';
+            reprocessBtn.disabled = false;
+          }, 3000);
+        }
+      });
+
+      loadProcessingStatus();
+
+      // -----------------------------------------------------------------------
       // PDF drag-and-drop + upload button
       // -----------------------------------------------------------------------
 
@@ -1103,6 +1340,19 @@
               date: new Date().toISOString().slice(0, 10),
             };
             state.items.unshift(newItem);
+
+            // Show processing indicator
+            if (state.processingEnabled) {
+              state.processingSlugs.add(data.slug);
+              // Clear after a delay (processing happens in background)
+              setTimeout(() => {
+                state.processingSlugs.delete(data.slug);
+                renderCards(getFilteredItems());
+                // Try loading connections for the new item
+                loadConnectionsForItems([newItem]);
+              }, 8000);
+            }
+
             renderCards(getFilteredItems());
 
             // Refresh stats
