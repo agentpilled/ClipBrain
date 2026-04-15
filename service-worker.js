@@ -1,5 +1,5 @@
 // ClipBrain — MV3 Service Worker
-// Receives extracted content from content script, POSTs to gbrain, manages offline queue.
+// Receives extracted content from content script, POSTs to ClipBrain server, manages offline queue.
 
 const GBRAIN_URL = "http://localhost:19285/api/capture";
 const GBRAIN_STATS_URL = "http://localhost:19285/api/stats";

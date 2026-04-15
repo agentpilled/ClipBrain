@@ -522,7 +522,7 @@
     console.log(`ClipBrain Kindle: importing "${titleWithAuthor}" (${highlights.length} highlights, ${notes.length} notes)`);
 
     try {
-      await sendToGBrain(titleWithAuthor, content);
+      await sendToClipBrain(titleWithAuthor, content);
       return { success: true, highlights: highlights.length, notes: notes.length, title };
     } catch (err) {
       console.error(`ClipBrain Kindle: failed to send "${titleWithAuthor}":`, err);
@@ -530,7 +530,7 @@
     }
   }
 
-  function sendToGBrain(titleWithAuthor, content) {
+  function sendToClipBrain(titleWithAuthor, content) {
     const titleSlug = slugify(titleWithAuthor);
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
@@ -657,44 +657,35 @@
     tryIt.appendChild(promptBox);
     panel.appendChild(tryIt);
 
-    // Next step — connect AI
-    const nextStep = document.createElement("div");
-    nextStep.style.cssText = "margin-bottom:16px";
+    // Dashboard link
+    const dashboardLink = document.createElement("div");
+    dashboardLink.style.cssText = "margin-bottom:16px";
 
-    const nextLabel = document.createElement("div");
-    nextLabel.style.cssText = "font-size:11px;color:#999;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px";
-    nextLabel.textContent = "Next step — Connect your AI";
-    nextStep.appendChild(nextLabel);
+    const dashLabel = document.createElement("div");
+    dashLabel.style.cssText = "font-size:11px;color:#999;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px";
+    dashLabel.textContent = "Browse your knowledge base";
+    dashboardLink.appendChild(dashLabel);
 
-    const setupCmd = "cd ~/Desktop/gbrain-capture && ./setup-mcp.sh";
-    const cmdBox = document.createElement("div");
-    Object.assign(cmdBox.style, {
+    const dashBox = document.createElement("a");
+    Object.assign(dashBox.style, {
+      display: "block",
       background: "#0f0f23",
       borderRadius: "8px",
       padding: "10px 12px",
       fontSize: "13px",
       color: "#a5b4fc",
-      cursor: "pointer",
       border: "1px solid #333",
       transition: "border-color 0.15s",
+      textDecoration: "none",
       fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
     });
-    cmdBox.textContent = "$ " + setupCmd;
-    cmdBox.title = "Click to copy";
-    cmdBox.addEventListener("mouseenter", () => cmdBox.style.borderColor = "#4ade80");
-    cmdBox.addEventListener("mouseleave", () => cmdBox.style.borderColor = "#333");
-    cmdBox.addEventListener("click", () => {
-      navigator.clipboard.writeText(setupCmd).then(() => {
-        cmdBox.textContent = "Copied!";
-        cmdBox.style.color = "#4ade80";
-        setTimeout(() => {
-          cmdBox.textContent = "$ " + setupCmd;
-          cmdBox.style.color = "#a5b4fc";
-        }, 1500);
-      });
-    });
-    nextStep.appendChild(cmdBox);
-    panel.appendChild(nextStep);
+    dashBox.href = "http://localhost:19285";
+    dashBox.target = "_blank";
+    dashBox.textContent = "localhost:19285";
+    dashBox.addEventListener("mouseenter", () => dashBox.style.borderColor = "#4ade80");
+    dashBox.addEventListener("mouseleave", () => dashBox.style.borderColor = "#333");
+    dashboardLink.appendChild(dashBox);
+    panel.appendChild(dashboardLink);
 
     // Bottom buttons
     const buttons = document.createElement("div");

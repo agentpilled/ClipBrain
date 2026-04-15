@@ -850,7 +850,8 @@
           if (hasConnections) {
             extraHTML += '<div class="card-connections"><div class="card-connections-title">Related</div>';
             for (const conn of connData.connections) {
-              extraHTML += `<span class="card-connection-link" data-slug="${escapeHTML(conn.slug)}">${escapeHTML(conn.slug.split('/').pop().replace(/-/g, ' '))}</span> <span class="card-connection-reason">${escapeHTML(conn.reason)}</span><br>`;
+              const connTitle = conn.title || conn.slug.split('/').pop().replace(/-/g, ' ');
+              extraHTML += `<span class="card-connection-link" data-slug="${escapeHTML(conn.slug)}">${escapeHTML(connTitle)}</span> <span class="card-connection-reason">${escapeHTML(conn.reason)}</span><br>`;
             }
             extraHTML += '</div>';
           }

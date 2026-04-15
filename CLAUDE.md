@@ -32,12 +32,24 @@ A standalone Bun HTTP server that:
 
 The server resolves the gbrain binary in this order: `GBRAIN_BIN` env var, `./bin/gbrain` (local build from setup.sh), then `gbrain` on PATH (global fallback).
 
+### Post-Processing (post-process.ts)
+
+After each capture, if `OPENAI_API_KEY` is set, the server runs AI post-processing in the background:
+- Generates a 2-3 sentence summary
+- Creates 3-5 semantic tags
+- Finds connections to existing content in the knowledge base
+- Enriches the markdown with `## Summary` and `## Related` sections
+- Re-syncs to Obsidian with wikilinks
+
+Post-processing is fire-and-forget: failures never affect the capture flow. If `OPENAI_API_KEY` is not set, everything works without it.
+
 ## Setup
 
 ```bash
-./setup.sh        # installs deps, builds gbrain, initializes database
-bun run serve     # starts the capture server
+./setup.sh        # installs deps, builds gbrain, initializes database, auto-starts server via launchd
 ```
+
+The server auto-starts on login via launchd. To manually start: `bun run serve`
 
 ## Testing
 

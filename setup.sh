@@ -6,6 +6,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "🧠 Setting up ClipBrain..."
 echo ""
 
+# ─── Step 0: Check for bun ──────────────────────────────────────────────────
+if ! command -v bun &>/dev/null; then
+  echo "  ✗ Bun is required but not installed."
+  echo ""
+  echo "  Install it with:"
+  echo "    curl -fsSL https://bun.sh/install | bash"
+  echo ""
+  echo "  Then re-run: ./setup.sh"
+  exit 1
+fi
+
 # ─── Step 1: Install dependencies ────────────────────────────────────────────
 echo "→ Installing dependencies..."
 bun install
@@ -135,7 +146,7 @@ MDEOF
 fi
 
 if [ -z "$CONFIGURED" ]; then
-  echo "  ⚠ No AI tools detected. Run ./setup-mcp.sh manually to configure."
+  echo "  ⚠ No AI tools detected. Install Claude Code or OpenClaw and re-run ./setup.sh"
 fi
 
 # ─── Step 5: Detect Obsidian ─────────────────────────────────────────────────
@@ -234,6 +245,14 @@ if [ "$(uname)" = "Darwin" ]; then
   BUN_PATH="$(which bun)"
 
   # Generate plist with current paths
+  BUN_DIR="$(dirname "$BUN_PATH")"
+  OPENAI_ENV_BLOCK=""
+  if [ -n "$OPENAI_API_KEY" ]; then
+    OPENAI_ENV_BLOCK="
+        <key>OPENAI_API_KEY</key>
+        <string>$OPENAI_API_KEY</string>"
+  fi
+
   cat > "$PLIST_DST" <<PLISTEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -250,9 +269,9 @@ if [ "$(uname)" = "Darwin" ]; then
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>$(dirname $BUN_PATH):/usr/local/bin:/usr/bin:/bin</string>
+        <string>$BUN_DIR:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
-        <string>$HOME</string>
+        <string>$HOME</string>$OPENAI_ENV_BLOCK
     </dict>
     <key>RunAtLoad</key>
     <true/>
@@ -276,15 +295,34 @@ fi
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 echo ""
-echo "✅ Setup complete!"
+echo "✅ ClipBrain is ready!"
 echo ""
-echo "One last step — load the Chrome extension:"
-echo "  1. Open chrome://extensions"
-echo "  2. Turn on Developer mode (top right)"
-echo "  3. Click 'Load unpacked' → select this folder"
-echo ""
-echo "The capture server is running in the background."
-if [ -n "$CONFIGURED" ]; then
-  echo "Your AI is already connected. Try asking:"
-  echo '  "What did I highlight in my Kindle books?"'
+echo "  ✓ Dependencies installed"
+echo "  ✓ Knowledge engine built"
+echo "  ✓ Database initialized"
+if [ "$(uname)" = "Darwin" ]; then
+  echo "  ✓ Server running (auto-starts on login)"
 fi
+if echo "$CONFIGURED" | grep -q "claude"; then
+  echo "  ✓ Claude Code connected"
+fi
+if echo "$CONFIGURED" | grep -q "openclaw"; then
+  echo "  ✓ OpenClaw connected"
+fi
+if [ -n "$OBSIDIAN_VAULT" ]; then
+  SHORT_VAULT=$(echo "$OBSIDIAN_VAULT" | sed "s|^$HOME|~|")
+  echo "  ✓ Obsidian synced to $SHORT_VAULT/ClipBrain"
+fi
+if [ -n "$OPENAI_API_KEY" ]; then
+  echo "  ✓ Smart processing enabled (GPT-4o-mini)"
+else
+  echo "  ○ Smart processing disabled (set OPENAI_API_KEY to enable)"
+fi
+echo ""
+echo "Load the Chrome extension:"
+echo "  chrome://extensions → Developer mode → Load unpacked → select this folder"
+echo ""
+echo "Then:"
+echo "  • Press Cmd+Shift+S on any page to capture it"
+echo "  • Go to read.amazon.com/notebook to import Kindle highlights"
+echo "  • Open localhost:19285 to browse your brain"

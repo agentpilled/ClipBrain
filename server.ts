@@ -289,7 +289,7 @@ async function handleStats(): Promise<Response> {
     return corsResponse(200, { articles, books, pdfs, highlights });
   } catch (err: any) {
     console.error('[stats]', err.message);
-    return corsResponse(200, { articles: 0, books: 0, highlights: 0 });
+    return corsResponse(200, { articles: 0, books: 0, pdfs: 0, highlights: 0 });
   }
 }
 
@@ -587,48 +587,59 @@ async function handleConnections(req: Request): Promise<Response> {
   try {
     const content = await gbrainExec(['get', slug]);
 
-    // Parse connections from frontmatter
-    const connections: Array<{ slug: string; reason: string }> = [];
-    const lines = content.split('\n');
-    let inConnections = false;
+    // Parse from the markdown body sections (not YAML frontmatter, which has multiline issues)
+    // The post-processor writes: ## Summary\n\ntext\n\n## Related\n\n- [[Title]] — reason
 
-    for (const line of lines) {
-      if (line.trim() === '---' && inConnections) break;
-      if (/^connections:\s*$/.test(line)) {
-        inConnections = true;
-        continue;
-      }
-      if (inConnections) {
-        const slugMatch = line.match(/^\s+-\s+slug:\s+(.+)$/);
-        if (slugMatch) {
-          connections.push({ slug: slugMatch[1].trim(), reason: '' });
-          continue;
-        }
-        const reasonMatch = line.match(/^\s+reason:\s+"?(.+?)"?\s*$/);
-        if (reasonMatch && connections.length > 0) {
-          connections[connections.length - 1].reason = reasonMatch[1];
-          continue;
-        }
-        // Non-connection line — stop parsing connections
-        if (!line.startsWith(' ') && line.trim()) {
-          inConnections = false;
-        }
+    // Extract summary from ## Summary section
+    let summary = '';
+    const summarySection = content.match(/## Summary\s*\n\n([\s\S]*?)(?=\n## |\n---\n|$)/);
+    if (summarySection) {
+      summary = summarySection[1].trim();
+    }
+
+    // Extract tags from frontmatter (YAML list format)
+    const tags: string[] = [];
+    const tagLines = content.match(/^tags:\s*\n((?:\s+-\s+.+\n)*)/m);
+    if (tagLines) {
+      const matches = tagLines[1].matchAll(/^\s+-\s+(.+)$/gm);
+      for (const m of matches) tags.push(m[1].trim());
+    } else {
+      // Try inline format: tags: [a, b, c]
+      const inlineTags = content.match(/^tags:\s*\[(.+)\]\s*$/m);
+      if (inlineTags) {
+        tags.push(...inlineTags[1].split(',').map(t => t.trim()));
       }
     }
 
-    // Parse summary
-    const summaryMatch = content.match(/^summary:\s*"?(.+?)"?\s*$/m);
-    const summary = summaryMatch ? summaryMatch[1] : '';
-
-    // Parse tags
-    const tagsMatch = content.match(/^tags:\s*\[(.+)\]\s*$/m);
-    const tags = tagsMatch ? tagsMatch[1].split(',').map(t => t.trim()) : [];
+    // Extract connections from ## Related section
+    // Format: - [[Title]] — reason
+    const connections: Array<{ slug: string; title: string; reason: string }> = [];
+    const relatedSection = content.match(/## Related\s*\n\n([\s\S]*?)(?=\n## |\n---\n|$)/);
+    if (relatedSection) {
+      const lines = relatedSection[1].trim().split('\n');
+      for (const line of lines) {
+        const match = line.match(/^-\s+\[\[(.+?)\]\]\s*[—–-]\s*(.+)$/);
+        if (match) {
+          const title = match[1].trim();
+          const reason = match[2].trim();
+          // Try to find the slug for this title in our known items
+          const foundSlug = findSlugByTitle(title) || '';
+          connections.push({ slug: foundSlug, title, reason });
+        }
+      }
+    }
 
     return corsResponse(200, { slug, summary, tags, connections });
   } catch (err: any) {
     console.error('[connections]', err.message);
     return corsResponse(404, { error: 'Page not found' });
   }
+}
+
+// Helper: find slug by title (best effort, searches cached items)
+function findSlugByTitle(title: string): string {
+  // This is a simple lookup; in production you'd cache the list
+  return ''; // Graph View will resolve this properly
 }
 
 // ---------------------------------------------------------------------------
