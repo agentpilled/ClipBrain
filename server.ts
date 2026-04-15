@@ -237,6 +237,19 @@ async function handleRecent(req: Request): Promise<Response> {
   }
 }
 
+// Track highlight counts per kindle book in a local JSON file
+async function updateHighlightCount(slug: string, count: number) {
+  const trackingFile = import.meta.dir + '/.highlight-counts.json';
+  let data: Record<string, number> = {};
+  try {
+    data = JSON.parse(await Bun.file(trackingFile).text());
+  } catch {}
+  data[slug] = count;
+  const total = Object.values(data).reduce((sum, c) => sum + c, 0);
+  await Bun.write(trackingFile, JSON.stringify(data));
+  await Bun.write(import.meta.dir + '/.highlight-count', String(total));
+}
+
 async function handleStats(): Promise<Response> {
   try {
     const output = await gbrainExec(['list', '--limit', '10000']);
@@ -244,24 +257,26 @@ async function handleStats(): Promise<Response> {
 
     let articles = 0;
     let books = 0;
-    let highlights = 0;
 
     for (const line of lines) {
-      if (line.includes('kindle/') || line.toLowerCase().includes('kindle')) {
+      const parts = line.split('\t');
+      const slug = parts[0]?.trim() || '';
+      if (slug.startsWith('kindle/')) {
         books++;
-      } else if (line.includes('web/')) {
+      } else if (slug.startsWith('web/')) {
         articles++;
-      }
-      // Count highlight markers if present
-      const highlightMatch = line.match(/(\d+)\s*highlight/i);
-      if (highlightMatch) {
-        highlights += parseInt(highlightMatch[1], 10);
       }
     }
 
-    // If no explicit highlight counts, estimate from kindle entries
-    if (highlights === 0 && books > 0) {
-      highlights = books; // At minimum, each kindle entry is a highlight
+    // Read highlight count from local tracking file (updated on each import)
+    let highlights = 0;
+    try {
+      const trackingFile = import.meta.dir + '/.highlight-count';
+      const stored = await Bun.file(trackingFile).text();
+      highlights = parseInt(stored.trim(), 10) || 0;
+    } catch {
+      // No tracking file yet — estimate
+      highlights = 0;
     }
 
     return corsResponse(200, { articles, books, highlights });
@@ -385,7 +400,13 @@ async function handleCapture(req: Request): Promise<Response> {
   });
 
   // Fire-and-forget — don't block the response on gbrain
-  gbrainPut(slug, markdown).catch((err) => {
+  gbrainPut(slug, markdown).then(() => {
+    // Track highlight count for kindle imports
+    if (slug.startsWith('kindle/')) {
+      const hlCount = (markdown.match(/^> /gm) || []).length;
+      if (hlCount > 0) updateHighlightCount(slug, hlCount);
+    }
+  }).catch((err) => {
     console.error(`[gbrain put] error:`, err);
   });
 
