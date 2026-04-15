@@ -8,20 +8,19 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #08081a;
-      --surface-1: #0f0f23;
-      --surface-2: #161633;
-      --border: #1e1e3e;
-      --border-hover: #2d2d5e;
-      --text-primary: #e4e4ed;
-      --text-secondary: #7a7a9a;
-      --text-muted: #4a4a6a;
-      --violet: #8b5cf6;
-      --emerald: #4ade80;
-      --amber: #f59e0b;
-      --danger: #ef4444;
-      --mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      --bg: #1e1e1e;
+      --surface: #262626;
+      --surface-hover: #2a2a2a;
+      --border: #333333;
+      --border-hover: #444444;
+      --text-primary: #dcddde;
+      --text-secondary: #999999;
+      --text-muted: #666666;
+      --accent: #7f6df2;
+      --green: #4ade80;
+      --amber: #e5a84b;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+      --sans: 'Inter', -apple-system, system-ui, sans-serif;
     }
 
     body {
@@ -35,22 +34,21 @@
 
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+    ::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
 
-    /* ── Header ─────────────────────────────────────────── */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* Header */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 32px;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      background: rgba(8, 8, 26, 0.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      z-index: 100;
+      margin-bottom: 12px;
     }
 
     .header-brand {
@@ -59,40 +57,40 @@
       gap: 10px;
     }
 
-    .header-logo { width: 24px; height: 24px; flex-shrink: 0; }
+    .header-logo { width: 22px; height: 22px; flex-shrink: 0; }
 
     .header-title {
-      font-size: 17px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: 18px;
+      font-weight: 600;
       color: var(--text-primary);
     }
 
-    .search-box { position: relative; width: 280px; }
+    /* Search */
+    .search-box { position: relative; width: 240px; }
 
     .search-input {
       width: 100%;
-      padding: 8px 14px 8px 36px;
-      background: rgba(15, 15, 35, 0.8);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      padding: 7px 12px 7px 32px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
       color: var(--text-primary);
       font-size: 13px;
       font-family: var(--sans);
       outline: none;
-      transition: border-color 150ms ease, box-shadow 150ms ease;
+      transition: border-color 150ms ease, background 150ms ease;
     }
 
     .search-input::placeholder { color: var(--text-muted); }
 
     .search-input:focus {
-      border-color: var(--violet);
-      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
+      border-color: var(--border);
+      background: var(--surface);
     }
 
     .search-icon {
       position: absolute;
-      left: 11px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
@@ -101,1096 +99,584 @@
 
     .search-clear {
       position: absolute;
-      right: 10px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--text-muted);
-      font-size: 16px;
-      cursor: pointer;
-      display: none;
       background: none;
       border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      display: none;
       line-height: 1;
       padding: 2px;
-      font-family: var(--sans);
     }
 
-    .search-clear:hover { color: var(--text-secondary); }
     .search-clear.visible { display: block; }
 
-    /* ── Container ──────────────────────────────────────── */
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 24px 32px 64px;
-    }
-
-    /* ── Stats Bar ──────────────────────────────────────── */
-    .stats-bar {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 32px;
-    }
-
-    .stat-card {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px 20px;
-      flex: 1;
-      cursor: pointer;
-      transition: border-color 150ms ease, background 150ms ease;
-      user-select: none;
-    }
-
-    .stat-card:hover {
-      border-color: var(--border-hover);
-      background: var(--surface-2);
-    }
-
-    .stat-card.active-books { border-color: var(--violet); background: rgba(139, 92, 246, 0.06); }
-    .stat-card.active-articles { border-color: var(--emerald); background: rgba(74, 222, 128, 0.06); }
-    .stat-card.active-highlights { border-color: var(--amber); background: rgba(245, 158, 11, 0.06); }
-
-    .stat-label {
-      font-size: 11px;
+    /* Stats line */
+    .stats-line {
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      font-size: 13px;
+      margin-bottom: 28px;
     }
 
-    .stat-value {
-      font-size: 28px;
-      font-weight: 700;
-      font-family: var(--mono);
-      line-height: 1.1;
-    }
-
-    .stat-value.books { color: var(--violet); }
-    .stat-value.articles { color: var(--emerald); }
-    .stat-value.highlights { color: var(--amber); }
-
-    /* ── Tabs ───────────────────────────────────────────── */
+    /* Tabs */
     .tabs {
       display: flex;
-      gap: 4px;
-      margin-bottom: 20px;
+      gap: 24px;
+      margin-bottom: 24px;
       border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
     }
 
     .tab {
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      border: none;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
-      transition: color 150ms ease, border-color 150ms ease;
-      user-select: none;
       background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
       font-family: var(--sans);
+      font-weight: 400;
+      cursor: pointer;
+      padding: 6px 0 10px;
+      position: relative;
+      transition: color 150ms ease;
     }
 
     .tab:hover { color: var(--text-secondary); }
 
     .tab.active {
-      color: var(--violet);
-      border-bottom-color: var(--violet);
+      color: var(--text-primary);
     }
 
-    /* ── Cards ──────────────────────────────────────────── */
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+
+    /* Card list */
     .card-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
+    /* Card */
     .card {
-      background: var(--surface-1);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      transition: border-color 150ms ease, background 150ms ease, opacity 300ms ease, transform 300ms ease;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 200ms ease;
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(4px);
+      animation: fadeIn 200ms ease forwards;
     }
 
-    .card.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .card:hover { border-color: var(--border-hover); }
 
-    .card:hover {
-      border-color: var(--border-hover);
-      background: rgba(15, 15, 35, 0.9);
+    @keyframes fadeIn {
+      to { opacity: 1; transform: translateY(0); }
     }
-
-    .card.kindle { border-left: 2px solid var(--amber); }
-    .card.web { border-left: 2px solid var(--emerald); }
 
     .card-header {
       display: flex;
-      align-items: flex-start;
-      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
       padding: 16px 20px;
-      cursor: pointer;
-      transition: background 150ms ease;
     }
 
-    .card-header:hover {
-      background: rgba(255, 255, 255, 0.01);
-    }
-
-    .card-icon {
-      font-size: 16px;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-
-    .card-body { flex: 1; min-width: 0; }
+    .card-info { flex: 1; min-width: 0; }
 
     .card-title {
       font-size: 14px;
       font-weight: 600;
       color: var(--text-primary);
-      line-height: 1.4;
-      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .card-meta {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-secondary);
       margin-top: 2px;
-      font-family: var(--mono);
-      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .card-count {
+    .card-type {
       font-family: var(--mono);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-muted);
-      flex-shrink: 0;
-      white-space: nowrap;
-      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
+
+    .card-type.kindle { color: var(--amber); }
+    .card-type.web { color: var(--green); }
 
     .card-chevron {
       color: var(--text-muted);
-      font-size: 10px;
-      flex-shrink: 0;
-      margin-top: 4px;
       transition: transform 200ms ease;
+      flex-shrink: 0;
+      margin-left: 12px;
     }
 
-    .card.expanded .card-chevron {
-      transform: rotate(90deg);
-    }
+    .card.expanded .card-chevron { transform: rotate(90deg); }
 
-    /* ── Card Content ───────────────────────────────────── */
+    /* Card content (expanded) */
     .card-content {
       max-height: 0;
       overflow: hidden;
       transition: max-height 200ms ease;
     }
 
-    .card.expanded .card-content {
-      max-height: 5000px;
-      transition: max-height 350ms ease;
-    }
-
     .card-content-inner {
-      padding: 0 20px 20px 48px;
+      padding: 0 20px 20px;
     }
 
-    /* ── Highlights ─────────────────────────────────────── */
-    .hl-item {
-      padding: 10px 0 10px 16px;
-      margin-top: 12px;
-      border-left: 2px solid var(--violet);
-      font-size: 14px;
-      color: var(--text-primary);
-      font-style: italic;
-      line-height: 1.55;
-      position: relative;
-    }
-
-    .hl-item .hl-page {
-      font-size: 12px;
+    .card-content-inner .loading-text {
       color: var(--text-muted);
-      font-style: normal;
-      font-family: var(--mono);
-      margin-top: 4px;
-      text-align: right;
-    }
-
-    .hl-item.note {
-      border-left-color: var(--amber);
-      font-style: normal;
       font-size: 13px;
-      color: var(--text-secondary);
     }
 
-    .hl-item.note .note-prefix {
-      font-style: normal;
+    /* Highlights */
+    .highlight {
+      border-left: 2px solid var(--accent);
+      padding: 8px 0 8px 16px;
+      margin-bottom: 12px;
     }
 
-    .hl-heading {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-top: 16px;
-      margin-bottom: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
+    .highlight:last-child { margin-bottom: 0; }
 
-    .show-all-btn {
-      display: inline-block;
-      margin-top: 16px;
-      padding: 6px 14px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
-      font-family: var(--sans);
-    }
-
-    .show-all-btn:hover {
+    .highlight-text {
+      font-size: 13px;
+      font-weight: 400;
       color: var(--text-primary);
-      border-color: var(--border-hover);
-      background: var(--surface-2);
-    }
-
-    /* ── Web Content ────────────────────────────────────── */
-    .web-paragraph {
-      margin-bottom: 8px;
-      font-size: 13px;
-      color: var(--text-secondary);
       line-height: 1.6;
     }
 
-    .web-heading {
-      font-size: 15px;
-      font-weight: 700;
-      margin: 16px 0 6px;
-      color: var(--text-primary);
-      letter-spacing: -0.01em;
-    }
-
-    .web-heading-2 {
-      font-size: 13px;
-      font-weight: 600;
-      margin: 14px 0 4px;
-      color: var(--text-secondary);
-    }
-
-    /* ── Search Results ─────────────────────────────────── */
-    .search-results-container { display: none; }
-    .search-results-container.active { display: block; }
-
-    .search-result-header {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
+    .highlight-page {
       font-family: var(--mono);
-    }
-
-    .search-result {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px 20px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: border-color 150ms ease, background 150ms ease;
-    }
-
-    .search-result:hover {
-      border-color: var(--border-hover);
-      background: var(--surface-2);
-    }
-
-    .search-result-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .search-result-slug {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 2px;
-      font-family: var(--mono);
+      margin-top: 4px;
     }
 
-    .search-result-snippet {
+    /* Notes */
+    .note {
+      border-left: 2px solid var(--amber);
+      padding: 8px 0 8px 16px;
+      margin-bottom: 12px;
+    }
+
+    .note:last-child { margin-bottom: 0; }
+
+    .note-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--amber);
+      margin-bottom: 2px;
+    }
+
+    .note-text {
       font-size: 13px;
-      color: var(--text-secondary);
-      margin-top: 6px;
-      line-height: 1.5;
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1.6;
     }
 
-    .search-result-relevance {
-      height: 2px;
-      background: var(--violet);
-      border-radius: 1px;
-      margin-top: 8px;
-      opacity: 0.5;
-    }
-
-    .no-results {
-      text-align: center;
-      padding: 32px;
-      color: var(--text-muted);
-      font-size: 13px;
-    }
-
-    /* ── Loading ─────────────────────────────────────────── */
-    .loading {
-      text-align: center;
-      padding: 48px;
-      color: var(--text-muted);
-    }
-
-    .loading-spinner {
-      display: inline-block;
-      width: 22px;
-      height: 22px;
-      border: 2px solid var(--border);
-      border-top-color: var(--violet);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 10px;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .mini-spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid var(--border);
-      border-top-color: var(--violet);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    /* ── Empty State ─────────────────────────────────────── */
+    /* Empty state */
     .empty-state {
       text-align: center;
-      padding: 80px 24px;
+      padding: 80px 20px;
       color: var(--text-muted);
     }
 
-    .empty-state .empty-logo {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 24px;
-      opacity: 0.4;
+    .empty-state-text {
+      font-size: 14px;
+      margin-top: 12px;
     }
 
-    .empty-state h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-      letter-spacing: -0.02em;
-    }
-
-    .empty-state p {
+    /* Loading state */
+    .loading-state {
+      color: var(--text-muted);
       font-size: 13px;
-      line-height: 1.8;
-      max-width: 360px;
-      margin: 0 auto;
+      padding: 40px 0;
+      text-align: center;
     }
-
-    .empty-state .steps {
-      margin-top: 24px;
-      text-align: left;
-      display: inline-block;
-    }
-
-    .empty-state .step {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-
-    .empty-state .step-num {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--violet);
-      font-weight: 600;
-    }
-
-    /* ── Responsive ──────────────────────────────────────── */
-    @media (max-width: 640px) {
-      .header { padding: 12px 16px; }
-      .container { padding: 16px; }
-      .search-box { width: 180px; }
-      .stat-card { padding: 12px 14px; }
-      .stat-value { font-size: 22px; }
-      .stats-bar { gap: 8px; }
-      .card-content-inner { padding-left: 20px; }
-      .tab { padding: 8px 12px; font-size: 12px; }
-    }
-
-    @media (max-width: 420px) {
-      .header { flex-wrap: wrap; gap: 10px; }
-      .search-box { width: 100%; }
-      .stats-bar { gap: 6px; }
-      .stat-card { min-width: 0; padding: 10px 12px; }
-      .stat-value { font-size: 18px; }
-    }
-
-    /* ── Utility ─────────────────────────────────────────── */
-    .hl-hidden { display: none; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="header-brand">
-      <svg class="header-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-          <path d="M28 58 L28 30"/>
-          <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
-          <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
-          <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
-          <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
-          <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
-        </g>
-      </svg>
-      <div class="header-title">ClipBrain</div>
-    </div>
-    <div class="search-box">
-      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-      </svg>
-      <input type="text" class="search-input" id="searchInput" placeholder="Search knowledge base..." autocomplete="off">
-      <button class="search-clear" id="searchClear" aria-label="Clear search">&times;</button>
-    </div>
-  </div>
-
   <div class="container">
-    <div id="loading" class="loading">
-      <div class="loading-spinner"></div>
-      <div>Loading knowledge base...</div>
+    <div class="header">
+      <div class="header-brand">
+        <svg class="header-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g stroke="#7f6df2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M28 58 L28 30"/>
+            <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
+            <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
+            <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
+          </g>
+        </svg>
+        <span class="header-title">ClipBrain</span>
+      </div>
+      <div class="search-box">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off">
+        <button class="search-clear" id="searchClear" aria-label="Clear search">&times;</button>
+      </div>
     </div>
 
-    <div id="content" style="display:none">
-      <div class="stats-bar" id="statsBar"></div>
+    <div class="stats-line" id="statsLine">Loading...</div>
 
-      <div class="tabs" id="tabBar">
-        <button class="tab active" data-filter="all">All</button>
-        <button class="tab" data-filter="kindle">&#x1F4D6; Books</button>
-        <button class="tab" data-filter="web">&#x1F310; Articles</button>
-      </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="kindle">Books</button>
+      <button class="tab" data-filter="web">Articles</button>
+    </div>
 
-      <div class="search-results-container" id="searchResults">
-        <div class="search-result-header" id="searchResultHeader">Search Results</div>
-        <div id="searchResultsList"></div>
-      </div>
-
-      <div id="mainContent">
-        <div class="card-list" id="cardList"></div>
-        <div id="emptyState" class="empty-state" style="display:none">
-          <svg class="empty-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-              <path d="M28 58 L28 30"/>
-              <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
-              <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
-              <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
-              <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
-              <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
-            </g>
-          </svg>
-          <h3>Your brain is empty</h3>
-          <p>Start building your knowledge base.</p>
-          <div class="steps">
-            <div class="step"><span class="step-num">01</span> Install the Chrome extension</div>
-            <div class="step"><span class="step-num">02</span> Press Cmd+Shift+S on any article</div>
-            <div class="step"><span class="step-num">03</span> Visit read.amazon.com/notebook to import Kindle highlights</div>
-          </div>
-        </div>
-      </div>
+    <div class="card-list" id="cardList">
+      <div class="loading-state">Loading...</div>
     </div>
   </div>
 
   <script>
-    const API = '';
+    (function() {
+      const state = {
+        items: [],
+        filter: 'all',
+        searchQuery: '',
+        expandedSlugs: new Set(),
+        contentCache: {},
+        stats: null,
+      };
 
-    // State
-    let allCards = [];
-    let activeFilter = 'all';
-    let searchTimeout = null;
-    let statsData = null;
+      const $ = (sel) => document.querySelector(sel);
+      const $$ = (sel) => document.querySelectorAll(sel);
 
-    // ── Init ──────────────────────────────────────────────────────────
-    async function init() {
-      try {
-        const [statsRes, recentRes] = await Promise.all([
-          fetch(API + '/api/stats'),
-          fetch(API + '/api/recent?limit=200')
-        ]);
+      // Elements
+      const statsLine = $('#statsLine');
+      const cardList = $('#cardList');
+      const searchInput = $('#searchInput');
+      const searchClear = $('#searchClear');
+      const tabs = $('#tabs');
 
-        statsData = await statsRes.json();
-        const recent = await recentRes.json();
-        const items = recent.results || [];
-
-        renderStats(statsData);
-        buildCards(items);
-        applyFilter('all');
-        autoExpandFirst();
-      } catch (err) {
-        console.error('Failed to load:', err);
-        document.getElementById('loading').innerHTML =
-          '<div style="color:var(--danger)">Failed to connect to server</div>';
-        return;
+      // Fetch helpers
+      async function fetchJSON(url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       }
 
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('content').style.display = 'block';
-
-      // Stagger card fade-in
-      requestAnimationFrame(() => {
-        const visible = document.querySelectorAll('.card[data-visible="1"]');
-        visible.forEach((card, i) => {
-          setTimeout(() => card.classList.add('visible'), i * 50);
-        });
-      });
-    }
-
-    // ── Stats ─────────────────────────────────────────────────────────
-    function renderStats(stats) {
-      const bar = document.getElementById('statsBar');
-      bar.innerHTML = `
-        <div class="stat-card" data-stat-filter="kindle" id="statBooks">
-          <div class="stat-label">Books</div>
-          <div class="stat-value books">${stats.books || 0}</div>
-        </div>
-        <div class="stat-card" data-stat-filter="web" id="statArticles">
-          <div class="stat-label">Articles</div>
-          <div class="stat-value articles">${stats.articles || 0}</div>
-        </div>
-        <div class="stat-card" data-stat-filter="" id="statHighlights">
-          <div class="stat-label">Highlights</div>
-          <div class="stat-value highlights">${stats.highlights || 0}</div>
-        </div>
-      `;
-
-      bar.querySelectorAll('.stat-card').forEach(el => {
-        el.addEventListener('click', () => {
-          const filter = el.dataset.statFilter;
-          if (filter) {
-            setActiveFilter(filter);
+      // Parse markdown content into highlights and notes
+      function parseContent(markdown) {
+        const items = [];
+        if (!markdown) return items;
+        const lines = markdown.split('\n');
+        let i = 0;
+        // Skip frontmatter
+        if (lines[0] && lines[0].trim() === '---') {
+          i = 1;
+          while (i < lines.length && lines[i].trim() !== '---') i++;
+          i++; // skip closing ---
+        }
+        let currentItem = null;
+        for (; i < lines.length; i++) {
+          const line = lines[i];
+          // Highlight: starts with >
+          if (line.startsWith('> ')) {
+            const text = line.slice(2).trim();
+            if (text) {
+              currentItem = { type: 'highlight', text, page: null };
+              items.push(currentItem);
+            }
+            continue;
           }
-        });
-      });
-    }
-
-    // ── Build Cards ───────────────────────────────────────────────────
-    function buildCards(items) {
-      const cardList = document.getElementById('cardList');
-      const kindleBooks = {};
-      const webItems = [];
-
-      for (const item of items) {
-        if (item.slug && item.slug.startsWith('kindle/')) {
-          const bookKey = item.slug;
-          if (!kindleBooks[bookKey]) {
-            kindleBooks[bookKey] = {
-              slug: item.slug,
-              title: item.title || formatSlug(item.slug),
-              date: item.date,
-              type: item.type
-            };
+          // Continuation of blockquote
+          if (line.startsWith('>') && currentItem && currentItem.type === 'highlight') {
+            const cont = line.slice(1).trim();
+            if (cont) currentItem.text += ' ' + cont;
+            continue;
           }
-        } else if (item.slug && item.slug.startsWith('web/')) {
-          webItems.push(item);
-        }
-      }
-
-      const books = Object.values(kindleBooks);
-
-      if (books.length === 0 && webItems.length === 0) {
-        document.getElementById('emptyState').style.display = 'block';
-        return;
-      }
-
-      // Build kindle cards
-      for (const book of books) {
-        const titleInfo = parseBookTitle(book.title, book.slug);
-        const card = createCardElement({
-          slug: book.slug,
-          title: titleInfo.title,
-          author: titleInfo.author,
-          date: book.date,
-          category: 'kindle',
-          icon: '&#x1F4D6;'
-        });
-        cardList.appendChild(card);
-      }
-
-      // Build web cards
-      for (const item of webItems) {
-        const domain = extractDomain(item.slug);
-        const card = createCardElement({
-          slug: item.slug,
-          title: item.title || formatSlug(item.slug),
-          domain: domain,
-          date: item.date,
-          category: 'web',
-          icon: '&#x1F310;'
-        });
-        cardList.appendChild(card);
-      }
-    }
-
-    function createCardElement(data) {
-      const card = document.createElement('div');
-      card.className = 'card ' + data.category;
-      card.dataset.slug = data.slug;
-      card.dataset.category = data.category;
-
-      const metaParts = [];
-      if (data.author) metaParts.push(escapeHtml(data.author));
-      if (data.domain) metaParts.push(escapeHtml(data.domain));
-      if (data.date) metaParts.push(formatDate(data.date));
-
-      card.innerHTML = `
-        <div class="card-header">
-          <span class="card-icon">${data.icon}</span>
-          <div class="card-body">
-            <div class="card-title">${escapeHtml(data.title)}</div>
-            <div class="card-meta">${metaParts.join(' &middot; ')}</div>
-          </div>
-          <span class="card-count" id="count-${escapeAttr(data.slug)}"></span>
-          <span class="card-chevron">&#x25B6;</span>
-        </div>
-        <div class="card-content">
-          <div class="card-content-inner">
-            <div style="padding:12px 0;text-align:center"><span class="mini-spinner"></span></div>
-          </div>
-        </div>
-      `;
-
-      card.querySelector('.card-header').addEventListener('click', () => toggleCard(card));
-
-      allCards.push({
-        slug: data.slug,
-        category: data.category,
-        element: card
-      });
-
-      return card;
-    }
-
-    // ── Filter & Tabs ─────────────────────────────────────────────────
-    function setActiveFilter(filter) {
-      activeFilter = filter;
-      applyFilter(filter);
-
-      document.querySelectorAll('.tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.filter === filter);
-      });
-
-      // Update stat card active states
-      document.querySelectorAll('.stat-card').forEach(el => {
-        el.classList.remove('active-books', 'active-articles', 'active-highlights');
-      });
-
-      if (filter === 'kindle') {
-        document.getElementById('statBooks').classList.add('active-books');
-      } else if (filter === 'web') {
-        document.getElementById('statArticles').classList.add('active-articles');
-      }
-    }
-
-    function applyFilter(filter) {
-      let visibleIndex = 0;
-      for (const cardData of allCards) {
-        const show = filter === 'all' || cardData.category === filter;
-        cardData.element.style.display = show ? '' : 'none';
-        if (show) {
-          cardData.element.dataset.visible = '1';
-          if (!cardData.element.classList.contains('visible')) {
-            setTimeout(() => cardData.element.classList.add('visible'), visibleIndex * 50);
+          // Page/location marker
+          if (currentItem && currentItem.type === 'highlight' && /^[-\u2014]\s*(page|location|p\.|loc\.)/i.test(line.trim())) {
+            currentItem.page = line.trim().replace(/^[-\u2014]\s*/, '');
+            continue;
           }
-          visibleIndex++;
-        } else {
-          cardData.element.dataset.visible = '0';
-        }
-      }
-    }
-
-    document.getElementById('tabBar').addEventListener('click', (e) => {
-      const tab = e.target.closest('.tab');
-      if (!tab) return;
-      setActiveFilter(tab.dataset.filter);
-    });
-
-    // ── Expand/Collapse Card ──────────────────────────────────────────
-    async function toggleCard(card, forceExpand) {
-      const wasExpanded = card.classList.contains('expanded');
-
-      if (wasExpanded && !forceExpand) {
-        card.classList.remove('expanded');
-        return;
-      }
-
-      card.classList.add('expanded');
-
-      const contentInner = card.querySelector('.card-content-inner');
-      const slug = card.dataset.slug;
-
-      if (contentInner.dataset.loaded) return;
-
-      try {
-        const res = await fetch(API + '/api/page?slug=' + encodeURIComponent(slug));
-        const data = await res.json();
-
-        if (data.content) {
-          const isKindle = slug.startsWith('kindle/');
-          if (isKindle) {
-            renderKindleCard(contentInner, data.content, card);
-          } else {
-            renderWebCard(contentInner, data.content);
+          // Note: **Note:** or *Note:*
+          if (/^\*{1,2}Note:?\*{1,2}/i.test(line.trim())) {
+            const noteText = line.trim().replace(/^\*{1,2}Note:?\*{1,2}\s*/i, '');
+            if (noteText) {
+              currentItem = { type: 'note', text: noteText };
+              items.push(currentItem);
+            }
+            continue;
           }
-        } else {
-          contentInner.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No content available</div>';
-        }
-        contentInner.dataset.loaded = '1';
-      } catch (err) {
-        contentInner.innerHTML = '<div style="color:var(--danger);font-size:13px;padding:8px 0">Failed to load content</div>';
-      }
-    }
-
-    // ── Auto-expand first 3 books ─────────────────────────────────────
-    async function autoExpandFirst() {
-      const kindleCards = allCards.filter(c => c.category === 'kindle').slice(0, 3);
-      for (const cardData of kindleCards) {
-        await toggleCard(cardData.element, true);
-        const inner = cardData.element.querySelector('.card-content-inner');
-        if (inner && inner.dataset.loaded) {
-          collapseToPreview(inner);
-        }
-      }
-    }
-
-    function collapseToPreview(inner) {
-      const allHighlights = inner.querySelectorAll('.hl-item');
-      const showAllBtn = inner.querySelector('.show-all-btn');
-      if (allHighlights.length <= 3) return;
-
-      allHighlights.forEach((el, i) => {
-        if (i >= 3) el.classList.add('hl-hidden');
-      });
-
-      const allElements = inner.children;
-      let hlSeen = 0;
-      for (const el of allElements) {
-        if (el.classList && el.classList.contains('hl-item')) {
-          hlSeen++;
-        }
-        if (hlSeen > 3 && el.classList && (el.classList.contains('hl-heading') || el.classList.contains('hl-item'))) {
-          el.classList.add('hl-hidden');
-        }
-      }
-
-      if (showAllBtn) showAllBtn.style.display = '';
-    }
-
-    // ── Render Kindle Content ─────────────────────────────────────────
-    function renderKindleCard(container, content, card) {
-      const fmMatch = content.match(/^---\n[\s\S]*?\n---\n/);
-      let body = fmMatch ? content.slice(fmMatch[0].length).trim() : content.trim();
-
-      const lines = body.split('\n');
-      let html = '';
-      let highlightCount = 0;
-      let noteCount = 0;
-      const parsedItems = [];
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        if (trimmed.startsWith('> ')) {
-          highlightCount++;
-          const text = trimmed.replace(/^>\s*/, '');
-          const pageMatch = text.match(/\(Page\s+(\d+)\)\s*$/i);
-          let displayText = text;
-          let page = null;
-          if (pageMatch) {
-            page = pageMatch[1];
-            displayText = text.slice(0, text.length - pageMatch[0].length).trim();
+          // Standalone note line after a highlight (no > prefix, not empty, not a heading)
+          if (currentItem && !line.startsWith('#') && line.trim() && !line.startsWith('>') && !/^[-\u2014]\s*(page|location|p\.|loc\.)/i.test(line.trim())) {
+            // Could be a note if previous was a highlight
+            if (currentItem.type === 'highlight' && currentItem.page !== null) {
+              // Text after page marker is likely a note
+              const noteItem = { type: 'note', text: line.trim() };
+              items.push(noteItem);
+              currentItem = noteItem;
+              continue;
+            }
           }
-          parsedItems.push({ type: 'highlight', text: displayText, page });
-        } else if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
-          const heading = trimmed.replace(/^#+\s*/, '');
-          if (heading.toLowerCase() !== 'notes' && heading.toLowerCase() !== 'highlights') {
-            parsedItems.push({ type: 'heading', text: heading });
+          if (!line.trim()) {
+            currentItem = null;
           }
-        } else if (trimmed.startsWith('- ')) {
-          noteCount++;
-          const noteText = trimmed.replace(/^-\s*/, '');
-          const pageMatch = noteText.match(/\(Page\s+(\d+)\)\s*$/i);
-          let displayText = noteText;
-          let page = null;
-          if (pageMatch) {
-            page = pageMatch[1];
-            displayText = noteText.slice(0, noteText.length - pageMatch[0].length).trim();
-          }
-          parsedItems.push({ type: 'note', text: displayText, page });
-        } else if (trimmed.startsWith('**Note:**') || trimmed.startsWith('*Note:*') || trimmed.startsWith('Note:') || trimmed.startsWith('note:')) {
-          noteCount++;
-          const noteText = trimmed.replace(/^\*+Note:\*+\s*/, '').replace(/^[Nn]ote:\s*/, '');
-          const pageMatch = noteText.match(/\(Page\s+(\d+)\)\s*$/i);
-          let displayText = noteText;
-          let page = null;
-          if (pageMatch) {
-            page = pageMatch[1];
-            displayText = noteText.slice(0, noteText.length - pageMatch[0].length).trim();
-          }
-          parsedItems.push({ type: 'note', text: displayText, page });
         }
+        return items;
       }
 
-      // Update count in card header
-      const totalHighlights = highlightCount + noteCount;
-      if (card && totalHighlights > 0) {
-        const countEl = card.querySelector('.card-count');
-        if (countEl) {
-          countEl.textContent = totalHighlights + ' highlight' + (totalHighlights !== 1 ? 's' : '');
+      // Render stats
+      function renderStats() {
+        if (!state.stats) { statsLine.textContent = ''; return; }
+        const parts = [];
+        if (state.stats.books) parts.push(`${state.stats.books} book${state.stats.books !== 1 ? 's' : ''}`);
+        if (state.stats.articles) parts.push(`${state.stats.articles} article${state.stats.articles !== 1 ? 's' : ''}`);
+        if (state.stats.highlights) parts.push(`${state.stats.highlights} highlight${state.stats.highlights !== 1 ? 's' : ''}`);
+        statsLine.textContent = parts.join(' \u00b7 ');
+      }
+
+      // Get filtered items
+      function getFilteredItems() {
+        let items = state.items;
+        if (state.filter === 'kindle') {
+          items = items.filter(it => it.slug && it.slug.startsWith('kindle/'));
+        } else if (state.filter === 'web') {
+          items = items.filter(it => it.slug && it.slug.startsWith('web/'));
         }
+        return items;
       }
 
-      // Render items
-      for (const item of parsedItems) {
-        if (item.type === 'heading') {
-          html += `<div class="hl-heading">${escapeHtml(item.text)}</div>`;
-        } else if (item.type === 'highlight') {
-          html += `<div class="hl-item">
-            <div>${escapeHtml(item.text)}</div>
-            ${item.page ? `<div class="hl-page">Page ${item.page}</div>` : ''}
-          </div>`;
-        } else if (item.type === 'note') {
-          html += `<div class="hl-item note">
-            <div><span class="note-prefix">&#x1F4DD; </span>${escapeHtml(item.text)}</div>
-            ${item.page ? `<div class="hl-page">Page ${item.page}</div>` : ''}
-          </div>`;
-        }
-      }
-
-      // "Show all" button
-      const totalItems = parsedItems.filter(i => i.type === 'highlight' || i.type === 'note').length;
-      if (totalItems > 3) {
-        html += `<button class="show-all-btn" onclick="showAllHighlights(this)">Show all ${totalItems} highlights</button>`;
-      }
-
-      container.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No highlights found</div>';
-    }
-
-    function showAllHighlights(btn) {
-      const container = btn.parentElement;
-      container.querySelectorAll('.hl-hidden').forEach(el => {
-        el.classList.remove('hl-hidden');
-      });
-      btn.style.display = 'none';
-    }
-
-    // ── Render Web Content ────────────────────────────────────────────
-    function renderWebCard(container, content) {
-      const fmMatch = content.match(/^---\n[\s\S]*?\n---\n/);
-      let body = fmMatch ? content.slice(fmMatch[0].length).trim() : content.trim();
-
-      const paragraphs = body.split(/\n\n+/);
-      let html = '';
-      for (const p of paragraphs) {
-        const trimmed = p.trim();
-        if (!trimmed) continue;
-        if (trimmed.startsWith('> ')) {
-          html += `<div class="hl-item">${escapeHtml(trimmed.replace(/^>\s*/gm, ''))}</div>`;
-        } else if (trimmed.startsWith('# ')) {
-          html += `<div class="web-heading">${escapeHtml(trimmed.replace(/^#+\s*/, ''))}</div>`;
-        } else if (trimmed.startsWith('## ')) {
-          html += `<div class="web-heading-2">${escapeHtml(trimmed.replace(/^#+\s*/, ''))}</div>`;
-        } else {
-          html += `<div class="web-paragraph">${escapeHtml(trimmed)}</div>`;
-        }
-      }
-      container.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No content</div>';
-    }
-
-    // ── Search ────────────────────────────────────────────────────────
-    const searchInput = document.getElementById('searchInput');
-    const searchClear = document.getElementById('searchClear');
-    const searchResults = document.getElementById('searchResults');
-    const searchResultsList = document.getElementById('searchResultsList');
-    const searchResultHeader = document.getElementById('searchResultHeader');
-    const mainContent = document.getElementById('mainContent');
-
-    searchInput.addEventListener('input', () => {
-      clearTimeout(searchTimeout);
-      const q = searchInput.value.trim();
-
-      searchClear.classList.toggle('visible', q.length > 0);
-
-      if (!q) {
-        searchResults.classList.remove('active');
-        mainContent.style.display = 'block';
-        return;
-      }
-
-      searchTimeout = setTimeout(() => doSearch(q), 300);
-    });
-
-    searchClear.addEventListener('click', () => {
-      searchInput.value = '';
-      searchClear.classList.remove('visible');
-      searchResults.classList.remove('active');
-      mainContent.style.display = 'block';
-      searchInput.focus();
-    });
-
-    async function doSearch(query) {
-      searchResults.classList.add('active');
-      mainContent.style.display = 'none';
-      searchResultsList.innerHTML = '<div style="text-align:center;padding:24px"><span class="mini-spinner"></span></div>';
-      searchResultHeader.textContent = 'Searching...';
-
-      try {
-        const res = await fetch(API + '/api/search?q=' + encodeURIComponent(query) + '&limit=30');
-        const data = await res.json();
-
-        if (!data.results || data.results.length === 0) {
-          searchResultsList.innerHTML = '<div class="no-results">No results found</div>';
-          searchResultHeader.textContent = 'Search Results';
+      // Render card list
+      function renderCards(items) {
+        if (!items || items.length === 0) {
+          cardList.innerHTML = state.searchQuery
+            ? '<div class="empty-state"><div class="empty-state-text">No results found</div></div>'
+            : '<div class="empty-state"><div class="empty-state-text">No items yet</div></div>';
           return;
         }
 
-        searchResultHeader.textContent = `${data.results.length} result${data.results.length !== 1 ? 's' : ''}`;
+        cardList.innerHTML = '';
+        items.forEach((item, idx) => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.style.animationDelay = `${idx * 30}ms`;
 
-        let html = '';
-        const maxScore = data.results[0].score || 1;
-        for (const r of data.results) {
-          const isKindle = r.slug && r.slug.startsWith('kindle/');
-          const icon = isKindle ? '&#x1F4D6;' : '&#x1F310;';
-          const relevance = Math.max(20, ((r.score || 0) / maxScore) * 100);
+          const isKindle = item.slug && item.slug.startsWith('kindle/');
+          const typeLabel = isKindle ? 'kindle' : 'web';
+          const typeClass = isKindle ? 'kindle' : 'web';
 
-          html += `
-            <div class="search-result" data-slug="${escapeAttr(r.slug || '')}">
-              <div style="display:flex;align-items:flex-start;gap:10px">
-                <span style="font-size:16px">${icon}</span>
-                <div style="flex:1;min-width:0">
-                  <div class="search-result-title">${escapeHtml(r.title || formatSlug(r.slug || ''))}</div>
-                  <div class="search-result-slug">${escapeHtml(r.slug || '')}</div>
-                  ${r.snippet ? `<div class="search-result-snippet">${escapeHtml(r.snippet)}</div>` : ''}
-                  <div class="search-result-relevance" style="width:${relevance}%"></div>
+          const highlightCount = item.highlight_count || item.highlights || '';
+          const metaParts = [];
+          if (item.author) metaParts.push(item.author);
+          if (highlightCount) metaParts.push(`${highlightCount} highlight${highlightCount !== 1 ? 's' : ''}`);
+
+          card.innerHTML = `
+            <div class="card-header">
+              <div class="card-info">
+                <div class="card-title">${escapeHTML(item.title || item.slug || 'Untitled')}</div>
+                <div class="card-meta">
+                  <span class="card-type ${typeClass}">${typeLabel}</span>
+                  ${metaParts.length ? '<span>' + escapeHTML(metaParts.join(' \u00b7 ')) + '</span>' : ''}
                 </div>
               </div>
+              <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-content-inner"></div>
             </div>
           `;
-        }
 
-        searchResultsList.innerHTML = html;
-
-        searchResultsList.querySelectorAll('.search-result').forEach(el => {
-          el.addEventListener('click', async () => {
-            const slug = el.dataset.slug;
-            if (!slug) return;
-
-            searchInput.value = '';
-            searchClear.classList.remove('visible');
-            searchResults.classList.remove('active');
-            mainContent.style.display = 'block';
-
-            const card = document.querySelector(`.card[data-slug="${CSS.escape(slug)}"]`);
-            if (card) {
-              const category = card.dataset.category;
-              if (activeFilter !== 'all' && activeFilter !== category) {
-                setActiveFilter('all');
-              }
-
-              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              if (!card.classList.contains('expanded')) {
-                toggleCard(card, true);
-              }
+          const slug = item.slug;
+          const isExpanded = state.expandedSlugs.has(slug);
+          if (isExpanded) {
+            card.classList.add('expanded');
+            const contentEl = card.querySelector('.card-content');
+            const innerEl = card.querySelector('.card-content-inner');
+            if (state.contentCache[slug]) {
+              renderHighlights(innerEl, state.contentCache[slug]);
+              // Set max-height after render
+              requestAnimationFrame(() => {
+                contentEl.style.maxHeight = contentEl.scrollHeight + 'px';
+              });
+            } else {
+              innerEl.innerHTML = '<div class="loading-text">Loading...</div>';
+              requestAnimationFrame(() => {
+                contentEl.style.maxHeight = '40px';
+              });
+              loadContent(slug, innerEl, contentEl);
             }
+          }
+
+          card.querySelector('.card-header').addEventListener('click', () => {
+            toggleCard(card, slug);
           });
+
+          cardList.appendChild(card);
         });
-      } catch (err) {
-        searchResultsList.innerHTML = '<div class="no-results" style="color:var(--danger)">Search failed</div>';
-        searchResultHeader.textContent = 'Search Results';
       }
-    }
 
-    // ── Helpers ────────────────────────────────────────────────────────
-    function parseBookTitle(title, slug) {
-      const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
-      if (byMatch) {
-        return { title: byMatch[1].trim(), author: byMatch[2].trim() };
-      }
-      const parts = slug.split('/');
-      if (parts.length >= 3) {
-        return {
-          title: title || parts.slice(2).join(' ').replace(/-/g, ' '),
-          author: parts[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-        };
-      }
-      return { title: title, author: null };
-    }
-
-    function extractDomain(slug) {
-      const parts = slug.split('/');
-      if (parts.length >= 2) {
-        return parts[1].replace(/-/g, '.');
-      }
-      return null;
-    }
-
-    function formatSlug(slug) {
-      const last = slug.split('/').pop() || slug;
-      return last.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    }
-
-    function formatDate(dateStr) {
-      try {
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        const now = new Date();
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        if (d.getFullYear() === now.getFullYear()) {
-          return months[d.getMonth()] + ' ' + d.getDate();
+      // Load content for a slug
+      async function loadContent(slug, innerEl, contentEl) {
+        try {
+          const data = await fetchJSON(`/api/page?slug=${encodeURIComponent(slug)}`);
+          const parsed = parseContent(data.content);
+          state.contentCache[slug] = parsed;
+          renderHighlights(innerEl, parsed);
+          contentEl.style.maxHeight = contentEl.scrollHeight + 'px';
+        } catch (err) {
+          innerEl.innerHTML = '<div class="loading-text">Failed to load</div>';
+          contentEl.style.maxHeight = '40px';
         }
-        return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-      } catch {
-        return dateStr;
       }
-    }
 
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
+      // Render highlights into element
+      function renderHighlights(el, items) {
+        if (!items || items.length === 0) {
+          el.innerHTML = '<div class="loading-text">No highlights</div>';
+          return;
+        }
+        el.innerHTML = items.map(item => {
+          if (item.type === 'note') {
+            return `<div class="note">
+              <div class="note-label">Note</div>
+              <div class="note-text">${escapeHTML(item.text)}</div>
+            </div>`;
+          }
+          return `<div class="highlight">
+            <div class="highlight-text">${escapeHTML(item.text)}</div>
+            ${item.page ? `<div class="highlight-page">${escapeHTML(item.page)}</div>` : ''}
+          </div>`;
+        }).join('');
+      }
 
-    function escapeAttr(str) {
-      return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
+      // Toggle card expand/collapse
+      function toggleCard(card, slug) {
+        const contentEl = card.querySelector('.card-content');
+        const innerEl = card.querySelector('.card-content-inner');
 
-    // ── Start ─────────────────────────────────────────────────────────
-    init();
+        if (card.classList.contains('expanded')) {
+          card.classList.remove('expanded');
+          contentEl.style.maxHeight = '0';
+          state.expandedSlugs.delete(slug);
+        } else {
+          card.classList.add('expanded');
+          state.expandedSlugs.add(slug);
+
+          if (state.contentCache[slug]) {
+            renderHighlights(innerEl, state.contentCache[slug]);
+            contentEl.style.maxHeight = contentEl.scrollHeight + 'px';
+          } else {
+            innerEl.innerHTML = '<div class="loading-text">Loading...</div>';
+            contentEl.style.maxHeight = '40px';
+            loadContent(slug, innerEl, contentEl);
+          }
+        }
+      }
+
+      // Escape HTML
+      function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // Tab handling
+      tabs.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('tab')) return;
+        $$('.tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        state.filter = e.target.dataset.filter;
+        renderCards(getFilteredItems());
+      });
+
+      // Search
+      let searchTimeout;
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        searchClear.classList.toggle('visible', q.length > 0);
+
+        clearTimeout(searchTimeout);
+        if (!q) {
+          state.searchQuery = '';
+          renderCards(getFilteredItems());
+          return;
+        }
+        searchTimeout = setTimeout(async () => {
+          state.searchQuery = q;
+          try {
+            const data = await fetchJSON(`/api/search?q=${encodeURIComponent(q)}`);
+            renderCards(data.results || []);
+          } catch (err) {
+            cardList.innerHTML = '<div class="empty-state"><div class="empty-state-text">Search failed</div></div>';
+          }
+        }, 300);
+      });
+
+      searchClear.addEventListener('click', () => {
+        searchInput.value = '';
+        searchClear.classList.remove('visible');
+        state.searchQuery = '';
+        renderCards(getFilteredItems());
+        searchInput.focus();
+      });
+
+      // Initial load
+      async function init() {
+        try {
+          const [statsData, recentData] = await Promise.all([
+            fetchJSON('/api/stats'),
+            fetchJSON('/api/recent?limit=200'),
+          ]);
+
+          state.stats = statsData;
+          renderStats();
+
+          const results = recentData.results || [];
+          state.items = results;
+          renderCards(getFilteredItems());
+
+          // Auto-expand first 3 kindle books
+          const kindleItems = results.filter(it => it.slug && it.slug.startsWith('kindle/'));
+          const toExpand = kindleItems.slice(0, 3);
+          for (const item of toExpand) {
+            state.expandedSlugs.add(item.slug);
+            // Pre-fetch content
+            try {
+              const data = await fetchJSON(`/api/page?slug=${encodeURIComponent(item.slug)}`);
+              state.contentCache[item.slug] = parseContent(data.content);
+            } catch (e) { /* ignore */ }
+          }
+
+          // Re-render with expanded cards
+          if (toExpand.length > 0) {
+            renderCards(getFilteredItems());
+          }
+        } catch (err) {
+          statsLine.textContent = '';
+          cardList.innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not connect to server</div></div>';
+        }
+      }
+
+      init();
+    })();
   </script>
 </body>
 </html>
