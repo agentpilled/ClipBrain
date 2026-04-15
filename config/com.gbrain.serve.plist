@@ -12,6 +12,14 @@
         <string>server.ts</string>
     </array>
 
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/luca/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/luca</string>
+    </dict>
+
     <key>RunAtLoad</key>
     <true/>
 
@@ -19,7 +27,7 @@
     <true/>
 
     <key>WorkingDirectory</key>
-    <string>/Users/luca/gbrain-capture</string>
+    <string>/Users/luca/Desktop/gbrain-capture</string>
 
     <key>StandardOutPath</key>
     <string>/Users/luca/Library/Logs/gbrain-capture.log</string>
