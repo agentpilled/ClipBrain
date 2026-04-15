@@ -1,4 +1,4 @@
-// GBrain Popup — vanilla JS
+// ClipBrain Popup — vanilla JS
 
 const API_BASE = "http://localhost:19285";
 

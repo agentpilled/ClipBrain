@@ -1,4 +1,4 @@
-// GBrain Capture — Content Script
+// ClipBrain — Content Script
 // Runs in the page context (has DOM access). Uses Readability to extract article content.
 
 (function () {
@@ -16,7 +16,7 @@
       article = reader.parse();
     }
   } catch (err) {
-    console.warn("GBrain Capture: Readability extraction failed:", err);
+    console.warn("ClipBrain: Readability extraction failed:", err);
   }
 
   const selection = window.getSelection()?.toString() || null;

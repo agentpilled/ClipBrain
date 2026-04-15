@@ -1,5 +1,5 @@
-// GBrain Capture — MV3 Service Worker
-// Receives extracted content from content script, POSTs to GBrain, manages offline queue.
+// ClipBrain — MV3 Service Worker
+// Receives extracted content from content script, POSTs to gbrain, manages offline queue.
 
 const GBRAIN_URL = "http://localhost:19285/api/capture";
 const GBRAIN_STATS_URL = "http://localhost:19285/api/stats";
@@ -62,7 +62,7 @@ async function handleCapture(data, tabId) {
       throw new Error(`HTTP ${resp.status}`);
     }
   } catch (err) {
-    console.warn("GBrain unreachable, queuing capture:", err.message);
+    console.warn("ClipBrain unreachable, queuing capture:", err.message);
     await enqueue(payload);
     setTempBadge("!", "#cc0000", 3000);
     notifyTab(tabId, false);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-// GBrain Capture — standalone HTTP server
+// ClipBrain — standalone HTTP server
 // Receives web captures from the Chrome extension and stores them via `gbrain put` CLI.
 
 const DEFAULT_PORT = 19285;
@@ -139,7 +139,7 @@ function corsResponse(status: number, body: unknown, extra?: Record<string, stri
 }
 
 // ---------------------------------------------------------------------------
-// GBrain CLI integration
+// gbrain CLI integration
 // ---------------------------------------------------------------------------
 
 function resolveGbrainCommand(): string[] {
@@ -175,7 +175,7 @@ async function gbrainPut(slug: string, markdown: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// GBrain CLI helpers for query/list/stats
+// gbrain CLI helpers for query/list/stats
 // ---------------------------------------------------------------------------
 
 async function gbrainExec(args: string[]): Promise<string> {
@@ -483,4 +483,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`GBrain Capture server listening on http://localhost:${server.port}`);
+console.log(`ClipBrain server listening on http://localhost:${server.port}`);

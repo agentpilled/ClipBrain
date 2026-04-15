@@ -1,6 +1,6 @@
-# GBrain Capture
+# ClipBrain
 
-Your AI doesn't know what you've read. GBrain Capture fixes that.
+Your AI doesn't know what you've read. ClipBrain fixes that.
 
 Save web articles and Kindle highlights to a local knowledge base. When you talk to Claude or OpenClaw, they can search everything you've captured and reference it in conversation.
 
@@ -18,7 +18,7 @@ cd gbrain-capture
 
 This single command:
 - Installs all dependencies
-- Builds the GBrain knowledge engine
+- Builds the gbrain knowledge engine
 - Creates a local database (no cloud, everything stays on your machine)
 - Auto-configures Claude Code and/or OpenClaw (auto-detects what you have)
 - Installs a background service so the capture server runs automatically
@@ -42,14 +42,14 @@ The page content is extracted, indexed, and stored locally. You'll see a brief n
 ### Kindle highlights
 
 1. Go to [read.amazon.com/notebook](https://read.amazon.com/notebook)
-2. A button appears: **Import to GBrain**
+2. A button appears: **Import to ClipBrain**
 3. Choose **This book** (current) or **All books** (imports every book automatically)
 
 The extension clicks through each book in your library, extracts all highlights and notes, and stores them with the book title and author.
 
 ### Browsing your brain
 
-Click the GBrain extension icon in Chrome to:
+Click the ClipBrain extension icon in Chrome to:
 - **Search** across everything you've captured
 - See **recent captures**
 - View **stats** (articles, books, highlights)
@@ -63,7 +63,7 @@ After setup, your AI already has access. Just talk naturally:
 - *"What books have I read about psychology?"*
 - *"Summarize the highlights from The Bitcoin Standard"*
 
-Your AI uses GBrain's search (semantic + keyword, hybrid) to find relevant content from your captures and uses it in the conversation.
+Your AI uses ClipBrain's search (semantic + keyword, hybrid) to find relevant content from your captures and uses it in the conversation.
 
 Works with **Claude Code**, **OpenClaw**, **Claude Desktop**, and any MCP-compatible tool.
 
@@ -84,15 +84,15 @@ Works with **Claude Code**, **OpenClaw**, **Claude Desktop**, and any MCP-compat
                           │                    │
                           ▼                    ▼
                    ┌──────────────────────────────┐
-                   │  GBrain (local database)      │
+                   │  gbrain (local database)      │
                    │  PGLite + pgvector            │
                    │  embeddings + hybrid search   │
                    └──────────────────────────────┘
 ```
 
 1. **Capture**: Chrome extension extracts content (Readability.js for web, DOM parsing for Kindle)
-2. **Index**: GBrain chunks the text, generates embeddings (OpenAI), stores in a local Postgres database
-3. **Search**: When your AI needs context, it calls GBrain's search tool via MCP (semantic + keyword hybrid)
+2. **Index**: The gbrain engine chunks the text, generates embeddings (OpenAI), stores in a local Postgres database
+3. **Search**: When your AI needs context, it calls ClipBrain's search tool via MCP (semantic + keyword hybrid)
 
 Everything runs locally. No data leaves your machine except for generating embeddings (OpenAI API).
 
@@ -116,5 +116,5 @@ gbrain-capture/
 ├── config/
 │   ├── com.gbrain.serve.plist   macOS auto-start
 │   └── claude-code-setup.md     Manual MCP setup guide
-└── node_modules/gbrain/     GBrain engine (auto-installed)
+└── node_modules/gbrain/     gbrain engine (auto-installed)
 ```

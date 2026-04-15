@@ -1,4 +1,4 @@
-// GBrain Capture — Toast notification (injected into the page)
+// ClipBrain — Toast notification (injected into the page)
 
 (function () {
   // Only set up the listener once
@@ -18,8 +18,8 @@
     const toast = document.createElement("div");
     toast.id = "gbrain-toast";
     toast.textContent = success
-      ? "Saved to GBrain \u2713"
-      : "GBrain offline, queued";
+      ? "Saved to ClipBrain \u2713"
+      : "ClipBrain offline, queued";
 
     Object.assign(toast.style, {
       position: "fixed",

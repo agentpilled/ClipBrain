@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "GBrain Capture",
+  "name": "ClipBrain",
   "version": "0.1.0",
-  "description": "Capture web content into your GBrain knowledge base",
+  "description": "Capture web content into your ClipBrain knowledge base",
   "permissions": ["storage", "alarms", "activeTab", "scripting"],
   "host_permissions": ["http://localhost:19285/*"],
   "background": {
@@ -14,7 +14,7 @@
         "default": "Ctrl+Shift+S",
         "mac": "Command+Shift+S"
       },
-      "description": "Capture current page to GBrain"
+      "description": "Capture current page to ClipBrain"
     }
   },
   "content_scripts": [

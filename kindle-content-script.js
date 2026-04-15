@@ -1,6 +1,6 @@
-// GBrain Capture — Kindle Notebook Content Script
+// ClipBrain — Kindle Notebook Content Script
 // Activates on read.amazon.com/notebook* to import Kindle highlights.
-// Clicks through each book in the sidebar, extracts highlights, sends to GBrain.
+// Clicks through each book in the sidebar, extracts highlights, sends to ClipBrain.
 
 (function () {
   if (window.__gbrainKindleReady) return;
@@ -9,7 +9,7 @@
   // ─── Button creation ────────────────────────────────────────────────
   const btn = document.createElement("button");
   btn.id = "gbrain-kindle-import";
-  btn.textContent = "Import to GBrain";
+  btn.textContent = "Import to ClipBrain";
 
   Object.assign(btn.style, {
     position: "fixed",
@@ -48,14 +48,14 @@
     for (let attempt = 0; attempt < 10; attempt++) {
       const books = document.querySelectorAll(".kp-notebook-library-each-book");
       if (books.length > 0) {
-        console.log("GBrain Kindle: found", books.length, "books via .kp-notebook-library-each-book (attempt", attempt + 1, ")");
+        console.log("ClipBrain Kindle: found", books.length, "books via .kp-notebook-library-each-book (attempt", attempt + 1, ")");
         return Array.from(books);
       }
-      console.log("GBrain Kindle: waiting for books to load... (attempt", attempt + 1, ")");
+      console.log("ClipBrain Kindle: waiting for books to load... (attempt", attempt + 1, ")");
       await delay(1000);
     }
 
-    console.log("GBrain Kindle: no books found after 10 attempts");
+    console.log("ClipBrain Kindle: no books found after 10 attempts");
     return [];
   }
 
@@ -241,7 +241,7 @@
         }
       }
 
-      console.log(`GBrain Kindle: found ${highlights.length} highlights, ${notes.length} notes via id selectors`);
+      console.log(`ClipBrain Kindle: found ${highlights.length} highlights, ${notes.length} notes via id selectors`);
       return { highlights, notes };
     }
 
@@ -306,7 +306,7 @@
       }
     }
 
-    console.log(`GBrain Kindle: found ${highlights.length} highlights, ${notes.length} notes via text-stream parsing`);
+    console.log(`ClipBrain Kindle: found ${highlights.length} highlights, ${notes.length} notes via text-stream parsing`);
     return { highlights, notes };
   }
 
@@ -359,7 +359,7 @@
     btn.textContent = "Scanning...";
     btn.disabled = true;
     const sidebarBooks = await findSidebarBooks();
-    btn.textContent = "Import to GBrain";
+    btn.textContent = "Import to ClipBrain";
     btn.disabled = false;
     const { title: currentTitle } = extractBookInfoFromHeader();
 
@@ -474,7 +474,7 @@
       btn.textContent = `${shortName} (${i + 1}/${total})`;
 
       try {
-        console.log(`GBrain Kindle: clicking book ${i + 1}/${total}:`, bookEl.textContent.trim().slice(0, 80));
+        console.log(`ClipBrain Kindle: clicking book ${i + 1}/${total}:`, bookEl.textContent.trim().slice(0, 80));
         // Amazon's click handler is on a child element, not the row itself
         const clickTarget = bookEl.querySelector("img, a, span, div") || bookEl;
         clickTarget.click();
@@ -482,14 +482,14 @@
 
         // Verify the page changed
         const { title: currentTitle } = extractBookInfoFromHeader();
-        console.log(`GBrain Kindle: after click, current book title: "${currentTitle}"`);
+        console.log(`ClipBrain Kindle: after click, current book title: "${currentTitle}"`);
 
         const result = await importCurrentBook();
         if (result.success || result.failed) {
           results.push(result);
         }
       } catch (err) {
-        console.error(`GBrain Kindle: failed to import "${displayName}":`, err);
+        console.error(`ClipBrain Kindle: failed to import "${displayName}":`, err);
         results.push({ success: false, failed: true, title: displayName, highlights: 0 });
       }
     }
@@ -506,7 +506,7 @@
     const { title, author } = extractBookInfoFromHeader();
 
     if (!title) {
-      console.warn("GBrain Kindle: could not find book title on current page");
+      console.warn("ClipBrain Kindle: could not find book title on current page");
       return { success: false, empty: true, highlights: 0, title: "Unknown" };
     }
 
@@ -519,13 +519,13 @@
     const content = formatBookMarkdown(title, author, highlights, notes);
     const titleWithAuthor = author ? `${title} by ${author}` : title;
 
-    console.log(`GBrain Kindle: importing "${titleWithAuthor}" (${highlights.length} highlights, ${notes.length} notes)`);
+    console.log(`ClipBrain Kindle: importing "${titleWithAuthor}" (${highlights.length} highlights, ${notes.length} notes)`);
 
     try {
       await sendToGBrain(titleWithAuthor, content);
       return { success: true, highlights: highlights.length, notes: notes.length, title };
     } catch (err) {
-      console.error(`GBrain Kindle: failed to send "${titleWithAuthor}":`, err);
+      console.error(`ClipBrain Kindle: failed to send "${titleWithAuthor}":`, err);
       return { success: false, failed: true, highlights: 0, title };
     }
   }
@@ -588,7 +588,7 @@
     // Header
     const header = document.createElement("div");
     header.style.cssText = "font-size:16px;font-weight:600;margin-bottom:14px;color:#4ade80";
-    header.textContent = `✓ Imported to GBrain`;
+    header.textContent = `✓ Imported to ClipBrain`;
     panel.appendChild(header);
 
     // Book list
@@ -716,7 +716,7 @@
       btn.style.display = "";
       btn.disabled = false;
       btn.style.cursor = "pointer";
-      btn.textContent = "Import to GBrain";
+      btn.textContent = "Import to ClipBrain";
       btn.style.background = "#1a1a2e";
       btn.style.padding = "12px 20px";
       btn.style.fontSize = "14px";

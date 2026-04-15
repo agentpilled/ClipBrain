@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-mcp.sh — Configure GBrain MCP for Claude Code and/or OpenClaw
+# setup-mcp.sh — Configure ClipBrain MCP for Claude Code and/or OpenClaw
 set -euo pipefail
 
 # ─── Resolve paths ────────────────────────────────────────────────────────────
@@ -18,8 +18,8 @@ if ! command -v bun &>/dev/null; then
   exit 1
 fi
 
-echo "GBrain MCP Setup"
-echo "================"
+echo "ClipBrain MCP Setup"
+echo "==================="
 echo ""
 echo "CLI path: $CLI_TS_PATH"
 echo ""
@@ -177,13 +177,13 @@ fi
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 CLAUDE_MD_DONE=false
 
-if ! grep -q "GBrain MCP" "$CLAUDE_MD" 2>/dev/null; then
+if ! grep -q "ClipBrain MCP\|GBrain MCP" "$CLAUDE_MD" 2>/dev/null; then
   mkdir -p "$(dirname "$CLAUDE_MD")"
   cat >> "$CLAUDE_MD" <<'MDEOF'
 
-## GBrain - Personal Knowledge Base
+## ClipBrain - Personal Knowledge Base
 
-You have access to the user's personal knowledge base via GBrain MCP tools.
+You have access to the user's personal knowledge base via ClipBrain MCP tools.
 
 Key tools:
 - `query` — Hybrid semantic + keyword search across saved articles, notes, and Kindle highlights

@@ -3,26 +3,26 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "🧠 Setting up GBrain Capture..."
+echo "🧠 Setting up ClipBrain..."
 echo ""
 
 # ─── Step 1: Install dependencies ────────────────────────────────────────────
 echo "→ Installing dependencies..."
 bun install
 
-# ─── Step 2: Build GBrain ────────────────────────────────────────────────────
-echo "→ Building GBrain..."
+# ─── Step 2: Build gbrain engine ──────────────────────────────────────────────
+echo "→ Building gbrain engine..."
 cd node_modules/gbrain
 bun install
 bun build --compile --outfile ../../bin/gbrain src/cli.ts
 cd "$SCRIPT_DIR"
 
-# ─── Step 3: Initialize GBrain database ──────────────────────────────────────
+# ─── Step 3: Initialize gbrain database ──────────────────────────────────────
 if [ ! -f ~/.gbrain/config.json ]; then
-  echo "→ Initializing GBrain database..."
+  echo "→ Initializing ClipBrain database..."
   ./bin/gbrain init
 else
-  echo "→ GBrain already initialized ✓"
+  echo "→ ClipBrain already initialized ✓"
 fi
 
 # ─── Step 4: Configure MCP for your AI ───────────────────────────────────────
@@ -117,13 +117,13 @@ fi
 
 # Add system prompt to CLAUDE.md
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
-if ! grep -q "GBrain MCP" "$CLAUDE_MD" 2>/dev/null; then
+if ! grep -q "ClipBrain MCP\|GBrain MCP" "$CLAUDE_MD" 2>/dev/null; then
   mkdir -p "$(dirname "$CLAUDE_MD")"
   cat >> "$CLAUDE_MD" <<'MDEOF'
 
-## GBrain - Personal Knowledge Base
+## ClipBrain - Personal Knowledge Base
 
-You have access to the user's personal knowledge base via GBrain MCP tools.
+You have access to the user's personal knowledge base via ClipBrain MCP tools.
 
 Key tools:
 - `query` — Hybrid semantic + keyword search across saved articles, notes, and Kindle highlights

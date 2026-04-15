@@ -1,6 +1,6 @@
-# Connecting GBrain Capture with your AI
+# Connecting ClipBrain with your AI
 
-GBrain exposes your captured knowledge via MCP (Model Context Protocol). Any AI tool that supports MCP can search what you've saved.
+ClipBrain exposes your captured knowledge via MCP (Model Context Protocol). Any AI tool that supports MCP can search what you've saved.
 
 ---
 
@@ -21,7 +21,7 @@ Add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings
 
 Replace `/path/to/gbrain-capture` with where you cloned the repo.
 
-Restart Claude Code. You should see GBrain tools in your tool list.
+Restart Claude Code. You should see ClipBrain tools in your tool list.
 
 ---
 
@@ -113,7 +113,7 @@ It communicates via stdio. Connect it like any other MCP server.
 Add this to your CLAUDE.md, system prompt, or equivalent config:
 
 ```
-You have access to the user's personal knowledge base via the GBrain MCP tools.
+You have access to the user's personal knowledge base via the ClipBrain MCP tools.
 
 Key tools:
 - `query` — Hybrid semantic + keyword search across saved articles, notes, and highlights
