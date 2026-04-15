@@ -31,21 +31,52 @@
           if (urlMatch) {
             const captionUrl = urlMatch[1].replace(/\\u0026/g, "&");
             // Same-origin fetch — browser includes YouTube cookies automatically
+            // Try json3 first, fall back to XML
             return fetch(captionUrl + "&fmt=json3")
-              .then((r) => r.json())
-              .then((data) => {
-                const segments = (data.events || [])
+              .then((r) => {
+                if (!r.ok || r.headers.get("content-length") === "0") throw new Error("empty json3");
+                return r.text();
+              })
+              .then((text) => {
+                if (!text || text.length < 10) throw new Error("empty json3 response");
+                const data = JSON.parse(text);
+                return (data.events || [])
                   .filter((e) => e.segs)
                   .map((e) => ({
                     start: Math.floor((e.tStartMs || 0) / 1000),
                     text: (e.segs || []).map((s) => s.utf8 || "").join("").trim(),
                   }))
                   .filter((s) => s.text);
-                return segments;
               })
-              .catch((err) => {
-                console.warn("ClipBrain: failed to fetch caption track:", err);
-                return null;
+              .catch(() => {
+                // json3 failed, try default XML format
+                console.log("ClipBrain: json3 failed, trying XML captions...");
+                return fetch(captionUrl)
+                  .then((r) => r.text())
+                  .then((xml) => {
+                    if (!xml || xml.length < 10) return null;
+                    // Parse XML: <transcript><text start="0" dur="5.2">Hello world</text>...</transcript>
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(xml, "text/xml");
+                    const textEls = doc.querySelectorAll("text");
+                    if (!textEls.length) return null;
+                    const segments = [];
+                    for (const el of textEls) {
+                      const start = Math.floor(parseFloat(el.getAttribute("start") || "0"));
+                      // Decode HTML entities in the text
+                      const div = document.createElement("div");
+                      div.innerHTML = el.textContent || "";
+                      const cleanText = div.textContent.trim();
+                      if (cleanText) {
+                        segments.push({ start, text: cleanText });
+                      }
+                    }
+                    return segments.length > 0 ? segments : null;
+                  })
+                  .catch((err) => {
+                    console.warn("ClipBrain: XML caption fetch also failed:", err);
+                    return null;
+                  });
               });
           }
         }
