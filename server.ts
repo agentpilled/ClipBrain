@@ -643,6 +643,123 @@ function findSlugByTitle(title: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Graph endpoint (cached for 5 minutes)
+// ---------------------------------------------------------------------------
+
+let graphCache: { data: any; ts: number } | null = null;
+const GRAPH_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function handleGraph(): Promise<Response> {
+  // Return cached result if fresh
+  if (graphCache && Date.now() - graphCache.ts < GRAPH_CACHE_TTL) {
+    return corsResponse(200, graphCache.data);
+  }
+
+  try {
+    // Get all items
+    const output = await gbrainExec(['list', '--limit', '1000']);
+    const items = parseGbrainOutput(output, 1000);
+
+    // Only include captures (kindle/, web/, pdf/)
+    const captures = items.filter(i =>
+      i.slug?.startsWith('kindle/') ||
+      i.slug?.startsWith('web/') ||
+      i.slug?.startsWith('pdf/')
+    );
+
+    // Build nodes
+    const nodes = captures.map(item => ({
+      id: item.slug,
+      title: item.title || item.slug,
+      type: item.slug.startsWith('kindle/') ? 'kindle' :
+            item.slug.startsWith('pdf/') ? 'pdf' : 'web',
+      size: item.slug.startsWith('kindle/') ? 8 : 5,
+    }));
+
+    // Build edges from connections
+    const edges: Array<{source: string; target: string; reason: string}> = [];
+
+    for (const item of captures) {
+      try {
+        const content = await gbrainExec(['get', item.slug]);
+
+        // Parse ## Related section for connections
+        const relatedSection = content.match(/## Related\s*\n\n([\s\S]*?)(?=\n## |\n---\n|$)/);
+        if (relatedSection) {
+          const lines = relatedSection[1].trim().split('\n');
+          for (const line of lines) {
+            const match = line.match(/^-\s+\[\[(.+?)\]\]/);
+            if (match) {
+              const targetTitle = match[1].trim().toLowerCase();
+              const targetNode = nodes.find(n =>
+                n.title.toLowerCase().includes(targetTitle) ||
+                targetTitle.includes(n.title.toLowerCase().split(' by ')[0].trim())
+              );
+              if (targetNode && targetNode.id !== item.slug) {
+                const reasonMatch = line.match(/[—–-]\s*(.+)$/);
+                edges.push({
+                  source: item.slug,
+                  target: targetNode.id,
+                  reason: reasonMatch ? reasonMatch[1].trim() : '',
+                });
+              }
+            }
+          }
+        }
+
+        // Parse tags for tag-based clustering
+        const tagLines = content.match(/^tags:\s*\n((?:\s+-\s+.+\n)*)/m);
+        if (tagLines) {
+          const nodeTags: string[] = [];
+          const matches = tagLines[1].matchAll(/^\s+-\s+(.+)$/gm);
+          for (const m of matches) nodeTags.push(m[1].trim());
+          const node = nodes.find(n => n.id === item.slug);
+          if (node) (node as any).tags = nodeTags;
+        } else {
+          // Try inline format: tags: [a, b, c]
+          const inlineTags = content.match(/^tags:\s*\[(.+)\]\s*$/m);
+          if (inlineTags) {
+            const node = nodes.find(n => n.id === item.slug);
+            if (node) (node as any).tags = inlineTags[1].split(',').map((t: string) => t.trim());
+          }
+        }
+      } catch {
+        // Skip items that can't be read
+      }
+    }
+
+    // Add tag-based edges: items sharing 2+ tags get a weaker connection
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const tagsA = (nodes[i] as any).tags || [];
+        const tagsB = (nodes[j] as any).tags || [];
+        const shared = tagsA.filter((t: string) => tagsB.includes(t));
+        if (shared.length >= 2) {
+          const exists = edges.some(e =>
+            (e.source === nodes[i].id && e.target === nodes[j].id) ||
+            (e.source === nodes[j].id && e.target === nodes[i].id)
+          );
+          if (!exists) {
+            edges.push({
+              source: nodes[i].id,
+              target: nodes[j].id,
+              reason: `Shared tags: ${shared.join(', ')}`,
+            });
+          }
+        }
+      }
+    }
+
+    const result = { nodes, edges };
+    graphCache = { data: result, ts: Date.now() };
+    return corsResponse(200, result);
+  } catch (err: any) {
+    console.error('[graph]', err.message);
+    return corsResponse(200, { nodes: [], edges: [] });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Reprocess all endpoint
 // ---------------------------------------------------------------------------
 
@@ -839,6 +956,11 @@ const server = Bun.serve({
     // Connections endpoint
     if (url.pathname === '/api/connections' && req.method === 'GET') {
       return handleConnections(req);
+    }
+
+    // Graph endpoint
+    if (url.pathname === '/api/graph' && req.method === 'GET') {
+      return handleGraph();
     }
 
     // Reprocess all endpoint

@@ -598,6 +598,196 @@
       opacity: 0.5;
       cursor: default;
     }
+
+    /* Graph view */
+    .graph-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      opacity: 0;
+      transition: opacity 300ms ease;
+    }
+
+    .graph-container.visible {
+      display: block;
+      opacity: 1;
+    }
+
+    .graph-container canvas {
+      display: block;
+      width: 100%;
+      border-radius: 8px;
+      cursor: grab;
+    }
+
+    .graph-container canvas:active { cursor: grabbing; }
+
+    .graph-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 80px 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .graph-loading .processing-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(127, 109, 242, 0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    .graph-empty {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .graph-tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: var(--surface);
+      border: 1px solid var(--border-hover);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--text-primary);
+      z-index: 500;
+      max-width: 260px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .graph-tooltip.visible { display: block; }
+
+    /* Graph info panel */
+    .graph-info-panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 300px;
+      max-height: 100%;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 400;
+      display: none;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+
+    .graph-info-panel.visible { display: block; }
+
+    .graph-info-panel::-webkit-scrollbar { width: 4px; }
+    .graph-info-panel::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+
+    .graph-info-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 2px;
+    }
+
+    .graph-info-close:hover { color: var(--text-primary); }
+
+    .graph-info-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      padding-right: 24px;
+    }
+
+    .graph-info-type {
+      font-size: 11px;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+
+    .graph-info-type.kindle { color: var(--amber); }
+    .graph-info-type.web { color: var(--green); }
+    .graph-info-type.pdf { color: var(--blue); }
+
+    .graph-info-summary {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .graph-info-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .graph-info-connections {
+      margin-bottom: 16px;
+    }
+
+    .graph-info-connections-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .graph-info-conn-item {
+      font-size: 12px;
+      color: var(--accent);
+      cursor: pointer;
+      padding: 3px 0;
+      transition: color 150ms ease;
+    }
+
+    .graph-info-conn-item:hover { color: #a78bfa; }
+
+    .graph-info-conn-reason {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
+    .graph-info-open-btn {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-family: var(--mono);
+      cursor: pointer;
+      transition: border-color 150ms ease, color 150ms ease;
+      text-align: center;
+    }
+
+    .graph-info-open-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -649,7 +839,22 @@
       <button class="tab" data-filter="kindle">Books</button>
       <button class="tab" data-filter="web">Articles</button>
       <button class="tab" data-filter="pdf">PDFs</button>
+      <button class="tab" data-filter="graph">Graph</button>
     </div>
+
+    <div class="graph-container" id="graphContainer">
+      <canvas id="graphCanvas"></canvas>
+      <div class="graph-info-panel" id="graphInfoPanel">
+        <button class="graph-info-close" id="graphInfoClose">&times;</button>
+        <div class="graph-info-title" id="graphInfoTitle"></div>
+        <div class="graph-info-type" id="graphInfoType"></div>
+        <div class="graph-info-summary" id="graphInfoSummary"></div>
+        <div class="graph-info-tags" id="graphInfoTags"></div>
+        <div class="graph-info-connections" id="graphInfoConnections"></div>
+        <button class="graph-info-open-btn" id="graphInfoOpen">Open in dashboard</button>
+      </div>
+    </div>
+    <div class="graph-tooltip" id="graphTooltip"></div>
 
     <div class="card-list" id="cardList">
       <div class="loading-state">Loading...</div>
@@ -1002,12 +1207,24 @@
       }
 
       // Tab handling
+      const graphContainer = $('#graphContainer');
+
       tabs.addEventListener('click', (e) => {
         if (!e.target.classList.contains('tab')) return;
         $$('.tab').forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
         state.filter = e.target.dataset.filter;
-        renderCards(getFilteredItems());
+
+        if (state.filter === 'graph') {
+          cardList.style.display = 'none';
+          graphContainer.classList.add('visible');
+          initGraph();
+        } else {
+          cardList.style.display = '';
+          graphContainer.classList.remove('visible');
+          if (graphSim) graphSim.running = false;
+          renderCards(getFilteredItems());
+        }
       });
 
       // Search
@@ -1252,6 +1469,550 @@
       });
 
       loadProcessingStatus();
+
+      // -----------------------------------------------------------------------
+      // Graph View
+      // -----------------------------------------------------------------------
+
+      let graphSim = null;
+      let graphData = null;
+      let graphLoaded = false;
+
+      async function initGraph() {
+        const container = document.getElementById('graphContainer');
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('graphTooltip');
+        const infoPanel = document.getElementById('graphInfoPanel');
+
+        // Show loading state
+        if (!graphLoaded) {
+          container.innerHTML = '<div class="graph-loading"><div class="processing-spinner"></div>Building knowledge graph...</div>' +
+            '<canvas id="graphCanvas" style="display:none"></canvas>' +
+            '<div class="graph-info-panel" id="graphInfoPanel"><button class="graph-info-close" id="graphInfoClose">&times;</button><div class="graph-info-title" id="graphInfoTitle"></div><div class="graph-info-type" id="graphInfoType"></div><div class="graph-info-summary" id="graphInfoSummary"></div><div class="graph-info-tags" id="graphInfoTags"></div><div class="graph-info-connections" id="graphInfoConnections"></div><button class="graph-info-open-btn" id="graphInfoOpen">Open in dashboard</button></div>';
+
+          try {
+            graphData = await fetchJSON('/api/graph');
+          } catch (err) {
+            container.innerHTML = '<div class="graph-empty">Failed to load graph data.</div>';
+            return;
+          }
+
+          graphLoaded = true;
+
+          if (!graphData.nodes || graphData.nodes.length === 0) {
+            container.innerHTML = '<div class="graph-empty">No connections yet. Capture more content and connections will appear.</div>';
+            return;
+          }
+
+          // Restore canvas
+          container.innerHTML = '';
+          const newCanvas = document.createElement('canvas');
+          newCanvas.id = 'graphCanvas';
+          container.appendChild(newCanvas);
+
+          // Rebuild info panel
+          const panel = document.createElement('div');
+          panel.className = 'graph-info-panel';
+          panel.id = 'graphInfoPanel';
+          panel.innerHTML = '<button class="graph-info-close" id="graphInfoClose">&times;</button><div class="graph-info-title" id="graphInfoTitle"></div><div class="graph-info-type" id="graphInfoType"></div><div class="graph-info-summary" id="graphInfoSummary"></div><div class="graph-info-tags" id="graphInfoTags"></div><div class="graph-info-connections" id="graphInfoConnections"></div><button class="graph-info-open-btn" id="graphInfoOpen">Open in dashboard</button>';
+          container.appendChild(panel);
+
+          startGraphSimulation(newCanvas, graphData);
+        } else if (graphData && graphData.nodes && graphData.nodes.length > 0) {
+          // Already loaded, restart simulation
+          const existingCanvas = container.querySelector('canvas');
+          if (existingCanvas) {
+            startGraphSimulation(existingCanvas, graphData);
+          }
+        }
+      }
+
+      function startGraphSimulation(canvas, data) {
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('graphTooltip');
+        const dpr = window.devicePixelRatio || 1;
+
+        // Sizing
+        function resize() {
+          const rect = canvas.parentElement.getBoundingClientRect();
+          const w = rect.width;
+          const h = Math.max(500, window.innerHeight - rect.top - 60);
+          canvas.style.width = w + 'px';
+          canvas.style.height = h + 'px';
+          canvas.width = w * dpr;
+          canvas.height = h * dpr;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          return { w, h };
+        }
+
+        let { w, h } = resize();
+
+        // Colors
+        const COLORS = {
+          kindle: '#e5a84b',
+          web: '#4ade80',
+          pdf: '#60a5fa',
+          edge: '#444444',
+          edgeHighlight: '#7f6df2',
+          label: '#999999',
+          labelHighlight: '#dcddde',
+          bg: '#1e1e1e',
+        };
+
+        // Initialize node positions
+        const nodes = data.nodes.map((n, i) => ({
+          ...n,
+          x: w / 2 + (Math.random() - 0.5) * w * 0.6,
+          y: h / 2 + (Math.random() - 0.5) * h * 0.6,
+          vx: 0,
+          vy: 0,
+          r: n.size || 5,
+        }));
+
+        const nodeMap = new Map();
+        nodes.forEach(n => nodeMap.set(n.id, n));
+
+        const edges = data.edges.filter(e => nodeMap.has(e.source) && nodeMap.has(e.target)).map(e => ({
+          source: nodeMap.get(e.source),
+          target: nodeMap.get(e.target),
+          reason: e.reason || '',
+          isTagBased: (e.reason || '').startsWith('Shared tags:'),
+        }));
+
+        // View transform (pan/zoom)
+        let viewX = 0, viewY = 0, viewScale = 1;
+
+        // Interaction state
+        let hoveredNode = null;
+        let selectedNode = null;
+        let dragNode = null;
+        let isPanning = false;
+        let panStartX = 0, panStartY = 0;
+        let panViewStartX = 0, panViewStartY = 0;
+        let frameCount = 0;
+        const STABILIZE_FRAMES = 200;
+
+        // Convert screen coords to world coords
+        function screenToWorld(sx, sy) {
+          return {
+            x: (sx - viewX) / viewScale,
+            y: (sy - viewY) / viewScale,
+          };
+        }
+
+        // Find node at position
+        function nodeAt(sx, sy) {
+          const { x, y } = screenToWorld(sx, sy);
+          let closest = null;
+          let closestDist = Infinity;
+          for (const n of nodes) {
+            const dx = n.x - x, dy = n.y - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const hitR = Math.max(n.r + 4, 12) / viewScale;
+            if (dist < hitR && dist < closestDist) {
+              closest = n;
+              closestDist = dist;
+            }
+          }
+          return closest;
+        }
+
+        // Physics step
+        function simulate() {
+          const repulsionStrength = 800;
+          const attractionStrength = 0.015;
+          const centerGravity = 0.01;
+          const damping = 0.85;
+          const springLength = 120;
+
+          // Repulsion (all pairs)
+          for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+              const a = nodes[i], b = nodes[j];
+              let dx = b.x - a.x, dy = b.y - a.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; dist = 1; }
+              const force = repulsionStrength / (dist * dist);
+              const fx = (dx / dist) * force;
+              const fy = (dy / dist) * force;
+              a.vx -= fx; a.vy -= fy;
+              b.vx += fx; b.vy += fy;
+            }
+          }
+
+          // Attraction (edges)
+          for (const edge of edges) {
+            const a = edge.source, b = edge.target;
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1) continue;
+            const strength = edge.isTagBased ? attractionStrength * 0.3 : attractionStrength;
+            const force = (dist - springLength) * strength;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            a.vx += fx; a.vy += fy;
+            b.vx -= fx; b.vy -= fy;
+          }
+
+          // Center gravity
+          for (const n of nodes) {
+            n.vx += (w / 2 - n.x) * centerGravity;
+            n.vy += (h / 2 - n.y) * centerGravity;
+          }
+
+          // Damping + update
+          for (const n of nodes) {
+            if (n === dragNode) continue;
+            n.vx *= damping;
+            n.vy *= damping;
+            n.x += n.vx;
+            n.y += n.vy;
+          }
+        }
+
+        // Render
+        function render() {
+          ctx.clearRect(0, 0, w, h);
+
+          ctx.save();
+          ctx.translate(viewX, viewY);
+          ctx.scale(viewScale, viewScale);
+
+          // Connected node set for highlighting
+          const connectedIds = new Set();
+          if (hoveredNode || selectedNode) {
+            const focus = hoveredNode || selectedNode;
+            for (const e of edges) {
+              if (e.source === focus || e.target === focus) {
+                connectedIds.add(e.source.id);
+                connectedIds.add(e.target.id);
+              }
+            }
+          }
+
+          const hasFocus = hoveredNode || selectedNode;
+
+          // Draw edges
+          for (const e of edges) {
+            const isHighlighted = hasFocus && (e.source === (hoveredNode || selectedNode) || e.target === (hoveredNode || selectedNode));
+            ctx.beginPath();
+            ctx.moveTo(e.source.x, e.source.y);
+            ctx.lineTo(e.target.x, e.target.y);
+
+            if (isHighlighted) {
+              ctx.strokeStyle = COLORS.edgeHighlight;
+              ctx.globalAlpha = 0.8;
+              ctx.lineWidth = 1.5;
+              ctx.setLineDash([]);
+            } else if (e.isTagBased) {
+              ctx.strokeStyle = COLORS.edge;
+              ctx.globalAlpha = hasFocus ? 0.05 : 0.15;
+              ctx.lineWidth = 0.5;
+              ctx.setLineDash([3, 4]);
+            } else {
+              ctx.strokeStyle = COLORS.edge;
+              ctx.globalAlpha = hasFocus ? 0.1 : 0.4;
+              ctx.lineWidth = 1;
+              ctx.setLineDash([]);
+            }
+
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+          }
+
+          // Draw nodes
+          const showLabels = viewScale > 0.6;
+          for (const n of nodes) {
+            const isHovered = n === hoveredNode;
+            const isSelected = n === selectedNode;
+            const isConnected = hasFocus && connectedIds.has(n.id);
+            const isFaded = hasFocus && !isHovered && !isSelected && !isConnected;
+
+            const r = isHovered ? n.r * 1.3 : isSelected ? n.r * 1.2 : n.r;
+            const color = COLORS[n.type] || COLORS.web;
+
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.globalAlpha = isFaded ? 0.15 : 1;
+            ctx.fill();
+
+            // Glow on hover/select
+            if (isHovered || isSelected) {
+              ctx.beginPath();
+              ctx.arc(n.x, n.y, r + 3, 0, Math.PI * 2);
+              ctx.strokeStyle = color;
+              ctx.globalAlpha = 0.3;
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+
+            // Labels
+            if (showLabels && !isFaded) {
+              const label = n.title.length > 30 ? n.title.slice(0, 28) + '...' : n.title;
+              ctx.fillStyle = (isHovered || isSelected || isConnected) ? COLORS.labelHighlight : COLORS.label;
+              ctx.globalAlpha = (isHovered || isSelected) ? 1 : isConnected ? 0.8 : 0.6;
+              ctx.font = `${isHovered || isSelected ? '12' : '10'}px -apple-system, system-ui, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.fillText(label, n.x, n.y + r + 14);
+            }
+
+            ctx.globalAlpha = 1;
+          }
+
+          ctx.restore();
+        }
+
+        // Animation loop
+        let animFrame;
+        const sim = { running: true };
+        graphSim = sim;
+
+        function tick() {
+          if (!sim.running) return;
+          if (frameCount < STABILIZE_FRAMES || dragNode) {
+            simulate();
+          }
+          render();
+          frameCount++;
+          animFrame = requestAnimationFrame(tick);
+        }
+
+        tick();
+
+        // --- Mouse events ---
+        function getCanvasCoords(e) {
+          const rect = canvas.getBoundingClientRect();
+          return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+          const { x, y } = getCanvasCoords(e);
+
+          if (isPanning) {
+            viewX = panViewStartX + (e.clientX - panStartX);
+            viewY = panViewStartY + (e.clientY - panStartY);
+            if (frameCount >= STABILIZE_FRAMES) render();
+            return;
+          }
+
+          if (dragNode) {
+            const world = screenToWorld(x, y);
+            dragNode.x = world.x;
+            dragNode.y = world.y;
+            dragNode.vx = 0;
+            dragNode.vy = 0;
+            if (frameCount >= STABILIZE_FRAMES) { simulate(); render(); }
+            return;
+          }
+
+          const node = nodeAt(x, y);
+          if (node !== hoveredNode) {
+            hoveredNode = node;
+            canvas.style.cursor = node ? 'pointer' : 'grab';
+            if (node) {
+              tooltip.textContent = node.title;
+              tooltip.classList.add('visible');
+            } else {
+              tooltip.classList.remove('visible');
+            }
+            if (frameCount >= STABILIZE_FRAMES) render();
+          }
+
+          if (hoveredNode) {
+            tooltip.style.left = (e.clientX + 12) + 'px';
+            tooltip.style.top = (e.clientY - 8) + 'px';
+          }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+          const { x, y } = getCanvasCoords(e);
+          const node = nodeAt(x, y);
+
+          if (node) {
+            dragNode = node;
+            canvas.style.cursor = 'grabbing';
+          } else {
+            isPanning = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panViewStartX = viewX;
+            panViewStartY = viewY;
+            canvas.style.cursor = 'grabbing';
+          }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+          if (dragNode) {
+            // Check if it was a click (not a drag)
+            const { x, y } = getCanvasCoords(e);
+            const node = nodeAt(x, y);
+            if (node && node === dragNode) {
+              selectedNode = node;
+              showInfoPanel(node, edges, nodeMap);
+            }
+            dragNode = null;
+            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+            if (frameCount >= STABILIZE_FRAMES) render();
+          }
+          if (isPanning) {
+            isPanning = false;
+            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+          }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+          hoveredNode = null;
+          tooltip.classList.remove('visible');
+          if (frameCount >= STABILIZE_FRAMES) render();
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const { x, y } = getCanvasCoords(e);
+          const delta = e.deltaY > 0 ? 0.9 : 1.1;
+          const newScale = Math.max(0.2, Math.min(5, viewScale * delta));
+
+          // Zoom toward cursor position
+          viewX = x - (x - viewX) * (newScale / viewScale);
+          viewY = y - (y - viewY) * (newScale / viewScale);
+          viewScale = newScale;
+
+          if (frameCount >= STABILIZE_FRAMES) render();
+        }, { passive: false });
+
+        // Resize handler
+        function onResize() {
+          const size = resize();
+          w = size.w;
+          h = size.h;
+          if (frameCount >= STABILIZE_FRAMES) render();
+        }
+        window.addEventListener('resize', onResize);
+
+        // Cleanup on tab switch
+        const origRunning = sim;
+        sim._cleanup = () => {
+          window.removeEventListener('resize', onResize);
+          if (animFrame) cancelAnimationFrame(animFrame);
+        };
+      }
+
+      function showInfoPanel(node, edges, nodeMap) {
+        const panel = document.getElementById('graphInfoPanel');
+        const titleEl = document.getElementById('graphInfoTitle');
+        const typeEl = document.getElementById('graphInfoType');
+        const summaryEl = document.getElementById('graphInfoSummary');
+        const tagsEl = document.getElementById('graphInfoTags');
+        const connsEl = document.getElementById('graphInfoConnections');
+        const openBtn = document.getElementById('graphInfoOpen');
+        const closeBtn = document.getElementById('graphInfoClose');
+
+        titleEl.textContent = node.title;
+        typeEl.textContent = node.type;
+        typeEl.className = 'graph-info-type ' + node.type;
+
+        // Get connections data from cache or fetch
+        const connData = state.connectionsCache[node.id];
+
+        if (connData && connData.summary) {
+          summaryEl.textContent = connData.summary;
+          summaryEl.style.display = '';
+        } else {
+          summaryEl.style.display = 'none';
+          // Try to fetch
+          fetchJSON(`/api/connections?slug=${encodeURIComponent(node.id)}`).then(data => {
+            if (data.summary) {
+              summaryEl.textContent = data.summary;
+              summaryEl.style.display = '';
+            }
+            if (data.tags && data.tags.length) {
+              tagsEl.innerHTML = data.tags.map(t => `<span class="card-tag">${escapeHTML(t)}</span>`).join('');
+              tagsEl.style.display = '';
+            }
+            state.connectionsCache[node.id] = data;
+          }).catch(() => {});
+        }
+
+        // Tags
+        const tags = (connData && connData.tags) || node.tags || [];
+        if (tags.length) {
+          tagsEl.innerHTML = tags.map(t => `<span class="card-tag">${escapeHTML(t)}</span>`).join('');
+          tagsEl.style.display = '';
+        } else {
+          tagsEl.style.display = 'none';
+        }
+
+        // Connected nodes
+        const connectedEdges = edges.filter(e => e.source === node || e.target === node);
+        if (connectedEdges.length) {
+          let html = '<div class="graph-info-connections-title">Connected</div>';
+          for (const e of connectedEdges) {
+            const other = e.source === node ? e.target : e.source;
+            html += `<div class="graph-info-conn-item" data-node-id="${escapeHTML(other.id)}">${escapeHTML(other.title)}`;
+            if (e.reason) html += `<span class="graph-info-conn-reason"> — ${escapeHTML(e.reason)}</span>`;
+            html += '</div>';
+          }
+          connsEl.innerHTML = html;
+          connsEl.style.display = '';
+
+          // Click connected node
+          connsEl.querySelectorAll('.graph-info-conn-item').forEach(el => {
+            el.addEventListener('click', () => {
+              const targetId = el.dataset.nodeId;
+              const targetNode = nodeMap.get(targetId);
+              if (targetNode) {
+                showInfoPanel(targetNode, edges, nodeMap);
+              }
+            });
+          });
+        } else {
+          connsEl.style.display = 'none';
+        }
+
+        // Open in dashboard button
+        openBtn.onclick = () => {
+          // Switch to the appropriate tab and scroll to the card
+          const slug = node.id;
+          let filterType = 'all';
+          if (slug.startsWith('kindle/')) filterType = 'kindle';
+          else if (slug.startsWith('web/')) filterType = 'web';
+          else if (slug.startsWith('pdf/')) filterType = 'pdf';
+
+          // Switch tab
+          state.filter = filterType;
+          $$('.tab').forEach(t => t.classList.remove('active'));
+          const targetTab = document.querySelector(`.tab[data-filter="${filterType}"]`);
+          if (targetTab) targetTab.classList.add('active');
+
+          // Hide graph, show cards
+          graphContainer.classList.remove('visible');
+          cardList.style.display = '';
+          if (graphSim) graphSim.running = false;
+          renderCards(getFilteredItems());
+
+          // Scroll to card
+          setTimeout(() => {
+            const card = cardList.querySelector(`[data-slug="${slug}"]`);
+            if (card) {
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              card.style.borderColor = 'var(--accent)';
+              setTimeout(() => { card.style.borderColor = ''; }, 2000);
+            }
+          }, 100);
+
+          panel.classList.remove('visible');
+        };
+
+        // Close button
+        closeBtn.onclick = () => {
+          panel.classList.remove('visible');
+        };
+
+        panel.classList.add('visible');
+      }
 
       // -----------------------------------------------------------------------
       // PDF drag-and-drop + upload button
