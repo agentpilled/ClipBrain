@@ -1693,27 +1693,39 @@
 
           const hasFocus = hoveredNode || selectedNode;
 
-          // Draw edges
+          // Draw edges (slightly curved like Obsidian)
           for (const e of edges) {
             const isHighlighted = hasFocus && (e.source === (hoveredNode || selectedNode) || e.target === (hoveredNode || selectedNode));
+
+            // Compute a slight curve offset
+            const mx = (e.source.x + e.target.x) / 2;
+            const my = (e.source.y + e.target.y) / 2;
+            const dx = e.target.x - e.source.x;
+            const dy = e.target.y - e.source.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Perpendicular offset for gentle curve
+            const curveAmount = dist * 0.08;
+            const cx = mx + (-dy / dist) * curveAmount;
+            const cy = my + (dx / dist) * curveAmount;
+
             ctx.beginPath();
             ctx.moveTo(e.source.x, e.source.y);
-            ctx.lineTo(e.target.x, e.target.y);
+            ctx.quadraticCurveTo(cx, cy, e.target.x, e.target.y);
 
             if (isHighlighted) {
               ctx.strokeStyle = COLORS.edgeHighlight;
-              ctx.globalAlpha = 0.8;
+              ctx.globalAlpha = 0.7;
               ctx.lineWidth = 1.5;
               ctx.setLineDash([]);
             } else if (e.isTagBased) {
               ctx.strokeStyle = COLORS.edge;
-              ctx.globalAlpha = hasFocus ? 0.05 : 0.15;
+              ctx.globalAlpha = hasFocus ? 0.03 : 0.1;
               ctx.lineWidth = 0.5;
               ctx.setLineDash([3, 4]);
             } else {
               ctx.strokeStyle = COLORS.edge;
-              ctx.globalAlpha = hasFocus ? 0.1 : 0.4;
-              ctx.lineWidth = 1;
+              ctx.globalAlpha = hasFocus ? 0.08 : 0.25;
+              ctx.lineWidth = 0.8;
               ctx.setLineDash([]);
             }
 
@@ -1785,14 +1797,27 @@
 
         tick();
 
-        // --- Mouse events ---
+        // --- Mouse events (Obsidian-style interaction) ---
         function getCanvasCoords(e) {
           const rect = canvas.getBoundingClientRect();
           return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         }
 
+        let mouseDownPos = null;    // Track where mousedown happened
+        let didDrag = false;        // Did the mouse move significantly during press?
+        const DRAG_THRESHOLD = 5;   // Pixels of movement before it counts as drag
+
         canvas.addEventListener('mousemove', (e) => {
           const { x, y } = getCanvasCoords(e);
+
+          // Track drag distance
+          if (mouseDownPos) {
+            const dx = e.clientX - mouseDownPos.cx;
+            const dy = e.clientY - mouseDownPos.cy;
+            if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+              didDrag = true;
+            }
+          }
 
           if (isPanning) {
             viewX = panViewStartX + (e.clientX - panStartX);
@@ -1801,7 +1826,7 @@
             return;
           }
 
-          if (dragNode) {
+          if (dragNode && didDrag) {
             const world = screenToWorld(x, y);
             dragNode.x = world.x;
             dragNode.y = world.y;
@@ -1814,8 +1839,9 @@
           const node = nodeAt(x, y);
           if (node !== hoveredNode) {
             hoveredNode = node;
-            canvas.style.cursor = node ? 'pointer' : 'grab';
-            if (node) {
+            canvas.style.cursor = node ? 'pointer' : 'default';
+            // Tooltip follows cursor, only show on hover (not sticky)
+            if (node && !selectedNode) {
               tooltip.textContent = node.title;
               tooltip.classList.add('visible');
             } else {
@@ -1824,15 +1850,19 @@
             if (frameCount >= STABILIZE_FRAMES) render();
           }
 
-          if (hoveredNode) {
-            tooltip.style.left = (e.clientX + 12) + 'px';
-            tooltip.style.top = (e.clientY - 8) + 'px';
+          // Move tooltip with cursor
+          if (hoveredNode && !selectedNode) {
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY + 14) + 'px';
           }
         });
 
         canvas.addEventListener('mousedown', (e) => {
           const { x, y } = getCanvasCoords(e);
           const node = nodeAt(x, y);
+
+          mouseDownPos = { cx: e.clientX, cy: e.clientY };
+          didDrag = false;
 
           if (node) {
             dragNode = node;
@@ -1845,30 +1875,43 @@
             panViewStartY = viewY;
             canvas.style.cursor = 'grabbing';
           }
+
+          // Hide tooltip during interaction
+          tooltip.classList.remove('visible');
         });
 
         canvas.addEventListener('mouseup', (e) => {
-          if (dragNode) {
-            // Check if it was a click (not a drag)
-            const { x, y } = getCanvasCoords(e);
-            const node = nodeAt(x, y);
-            if (node && node === dragNode) {
+          const { x, y } = getCanvasCoords(e);
+          const node = nodeAt(x, y);
+
+          if (dragNode && !didDrag) {
+            // It was a CLICK, not a drag
+            if (selectedNode === dragNode) {
+              // Clicking selected node → deselect
+              selectedNode = null;
+              document.getElementById('graphInfoPanel')?.classList.remove('visible');
+            } else {
+              // Select this node
               selectedNode = node;
-              showInfoPanel(node, edges, nodeMap);
+              if (node) showInfoPanel(node, edges, nodeMap);
             }
-            dragNode = null;
-            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
-            if (frameCount >= STABILIZE_FRAMES) render();
+          } else if (isPanning && !didDrag) {
+            // Clicked empty space → deselect
+            selectedNode = null;
+            document.getElementById('graphInfoPanel')?.classList.remove('visible');
           }
-          if (isPanning) {
-            isPanning = false;
-            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
-          }
+
+          dragNode = null;
+          isPanning = false;
+          mouseDownPos = null;
+          canvas.style.cursor = hoveredNode ? 'pointer' : 'default';
+          if (frameCount >= STABILIZE_FRAMES) render();
         });
 
         canvas.addEventListener('mouseleave', () => {
           hoveredNode = null;
           tooltip.classList.remove('visible');
+          canvas.style.cursor = 'default';
           if (frameCount >= STABILIZE_FRAMES) render();
         });
 
