@@ -43,11 +43,11 @@ function formatDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function iconForType(item) {
-  if (item.type === "kindle" || (item.slug && item.slug.startsWith("kindle/"))) return "\u{1F4D6}";
-  if (item.slug && item.slug.startsWith("pdf/")) return "\u{1F4C4}";
-  if (item.slug && item.slug.startsWith("youtube/")) return "\u25B6";
-  return "\u{1F310}";
+function typeClassForItem(item) {
+  if (item.type === "kindle" || (item.slug && item.slug.startsWith("kindle/"))) return "type-kindle";
+  if (item.slug && item.slug.startsWith("pdf/")) return "type-pdf";
+  if (item.slug && item.slug.startsWith("youtube/")) return "type-youtube";
+  return "type-web";
 }
 
 function truncate(str, len) {
@@ -78,13 +78,13 @@ function renderItem(item) {
   el.className = "item";
   el.title = "Click to copy title";
   el.innerHTML = `
-    <span class="item-icon">${iconForType(item)}</span>
+    <span class="item-type-dot ${typeClassForItem(item)}"></span>
     <div class="item-body">
       <div class="item-title">${escapeHtml(truncate(item.title || item.slug || "Untitled", 60))}</div>
       ${item.snippet ? `<div class="item-snippet">${escapeHtml(truncate(item.snippet, 80))}</div>` : ""}
     </div>
     <span class="item-date">${formatDate(item.date || item.captured_at)}</span>
-    <button class="item-ai-copy" title="Copy for AI">&#x2934;</button>
+    <button class="item-ai-copy" title="Copy for AI">AI &rarr;</button>
   `;
   el.addEventListener("click", (e) => {
     if (e.target.closest('.item-ai-copy')) return;
@@ -95,10 +95,10 @@ function renderItem(item) {
     const btn = e.currentTarget;
     const prompt = generateAIPrompt(item);
     navigator.clipboard.writeText(prompt).then(() => {
-      btn.textContent = '\u2713';
+      btn.textContent = '✓ Copied!';
       btn.classList.add('copied');
       setTimeout(() => {
-        btn.innerHTML = '&#x2934;';
+        btn.innerHTML = 'AI &rarr;';
         btn.classList.remove('copied');
       }, 1000);
     });
@@ -161,8 +161,12 @@ const doSearch = debounce(async (query) => {
   try {
     const data = await apiFetch(`/api/search?q=${encodeURIComponent(query)}&limit=10`);
     $searchResults.innerHTML = "";
-    if (data.results && data.results.length > 0) {
-      data.results.forEach((item) => $searchResults.appendChild(renderItem(item)));
+    const filtered = (data.results || []).filter(item => {
+      const t = (item.title || '').trim();
+      return t && t !== '>-' && t !== '--' && t.length > 1;
+    });
+    if (filtered.length > 0) {
+      filtered.forEach((item) => $searchResults.appendChild(renderItem(item)));
     } else {
       $searchResults.innerHTML = '<div class="search-loading">No results found</div>';
     }
@@ -178,8 +182,12 @@ async function loadMainContent() {
   try {
     const data = await apiFetch("/api/recent?limit=10");
     $recentList.innerHTML = "";
-    if (data.results && data.results.length > 0) {
-      data.results.forEach((item) => $recentList.appendChild(renderItem(item)));
+    const filtered = (data.results || []).filter(item => {
+      const t = (item.title || '').trim();
+      return t && t !== '>-' && t !== '--' && t.length > 1;
+    });
+    if (filtered.length > 0) {
+      filtered.forEach((item) => $recentList.appendChild(renderItem(item)));
       $recentSection.style.display = "";
       $emptyState.style.display = "none";
     } else {
@@ -239,7 +247,7 @@ function setupCaptureButton() {
       // Refresh the recent list after a brief delay
       setTimeout(() => {
         loadMainContent();
-        btn.textContent = "⬇️ Capture this page";
+        btn.textContent = "Capture this page";
         btn.classList.remove("done");
         btn.disabled = false;
       }, 2000);
@@ -249,7 +257,7 @@ function setupCaptureButton() {
       btn.classList.remove("capturing");
       btn.disabled = false;
       setTimeout(() => {
-        btn.textContent = "⬇️ Capture this page";
+        btn.textContent = "Capture this page";
       }, 3000);
     }
   });
@@ -298,7 +306,7 @@ async function init() {
       if (!warningBar) {
         warningBar = document.createElement("div");
         warningBar.id = "warningBar";
-        warningBar.style.cssText = "padding:6px 16px;font-size:11px;color:#ca8a04;background:#1a1a2e;border-bottom:1px solid #2a2a3e;";
+        warningBar.style.cssText = "padding:6px 16px;font-size:11px;color:#ca8a04;background:#262626;border-bottom:1px solid #333333;";
         $onlineContent.prepend(warningBar);
       }
       warningBar.innerHTML = warnings.map(w => '<div style="padding:2px 0">' + w + '</div>').join("");

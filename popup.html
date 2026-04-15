@@ -8,7 +8,17 @@
   <!-- Onboarding (hidden by default) -->
   <div id="onboarding" class="onboarding" style="display:none">
     <div id="step1" class="onboarding-step active">
-      <h2>&#x1F9E0; Welcome to ClipBrain</h2>
+      <svg class="onboarding-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M28 58 L28 30"/>
+          <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
+          <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
+          <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
+          <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
+          <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
+        </g>
+      </svg>
+      <h2>Welcome to ClipBrain</h2>
       <p>Your personal knowledge base for AI.</p>
       <p>Everything you read becomes searchable by Claude.</p>
       <div class="onboarding-actions">
@@ -31,9 +41,9 @@
     </div>
 
     <div id="step3" class="onboarding-step">
-      <h2>You're all set! 🎉</h2>
+      <h2>You're all set!</h2>
       <p>Your AI is already connected. Start capturing content, then ask your AI about what you've read.</p>
-      <p style="color:#4ade80;font-size:13px">Try: "What did I highlight in my Kindle books?"</p>
+      <p style="color:#7f6df2;font-size:13px">Try: "What did I highlight in my Kindle books?"</p>
       <div class="onboarding-actions">
         <button class="btn btn-primary" id="onb-done">Let's go</button>
       </div>
@@ -43,7 +53,19 @@
   <!-- Main popup (hidden until loaded) -->
   <div id="main" style="display:none">
     <div class="header">
-      <span class="header-title">&#x1F9E0; ClipBrain</span>
+      <div class="header-brand">
+        <svg class="header-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M28 58 L28 30"/>
+            <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
+            <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
+            <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
+            <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
+            <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
+          </g>
+        </svg>
+        <span class="header-title">ClipBrain</span>
+      </div>
       <span class="status-dot" id="statusDot" title="Checking..."></span>
     </div>
 
@@ -54,10 +76,10 @@
 
       <div class="action-buttons" id="actionButtons">
         <button class="btn-action btn-capture" id="captureBtn" title="Save this page to ClipBrain">
-          &#x2B07;&#xFE0F; Capture this page
+          Capture this page
         </button>
         <a href="http://localhost:19285" target="_blank" class="btn-action btn-dashboard">
-          &#x1F4CA; Full dashboard
+          Dashboard
         </a>
       </div>
 
@@ -71,11 +93,9 @@
       <div id="emptyState" class="empty-state" style="display:none">
         <h3>Your brain is empty! Start capturing:</h3>
         <div class="empty-hint">
-          <span>&#x2328;&#xFE0F;</span>
           <span>Press <kbd>Cmd+Shift+S</kbd> on any page</span>
         </div>
         <div class="empty-hint">
-          <span>&#x1F4D6;</span>
           <span>Import Kindle highlights from <a href="https://read.amazon.com/notebook" target="_blank">read.amazon.com/notebook</a></span>
         </div>
       </div>
@@ -87,9 +107,9 @@
       <div class="offline-state">
         <h3>Server offline</h3>
         <p>The ClipBrain server should auto-start on login. It may still be starting up.</p>
-        <p style="color:#999;font-size:12px;margin-top:8px">If the server doesn't auto-start, run:</p>
+        <p style="color:#999999;font-size:12px;margin-top:8px">If the server doesn't auto-start, run:</p>
         <div class="cmd-box" id="offlineCmd" title="Click to copy">
-          <span class="copy-icon">&#x1F4CB;</span>
+          <span class="copy-icon">&#x2398;</span>
           <span>cd ~/Desktop/gbrain-capture && bun run serve</span>
         </div>
         <div class="copied-toast" id="offlineCopied">Copied!</div>

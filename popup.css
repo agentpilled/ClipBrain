@@ -1,4 +1,4 @@
-/* ClipBrain Popup — Premium Dark Theme */
+/* ClipBrain Popup — Obsidian-style Dark Theme */
 
 * {
   margin: 0;
@@ -10,8 +10,8 @@ body {
   width: 380px;
   max-height: 500px;
   overflow-y: auto;
-  background: #0f0f1a;
-  color: #e0e0e0;
+  background: #1e1e1e;
+  color: #dcddde;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
   line-height: 1.5;
@@ -24,13 +24,26 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #2a2a3e;
+  border-bottom: 1px solid #333333;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-logo {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .header-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   letter-spacing: -0.3px;
+  color: #dcddde;
 }
 
 .status-dot {
@@ -55,22 +68,22 @@ body {
 .search-input {
   width: 100%;
   padding: 8px 12px;
-  background: #1a1a2e;
-  border: 1px solid #2a2a3e;
-  border-radius: 8px;
-  color: #e0e0e0;
+  background: #262626;
+  border: 1px solid #333333;
+  border-radius: 6px;
+  color: #dcddde;
   font-size: 13px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search-input::placeholder {
-  color: #666;
+  color: #666666;
 }
 
 .search-input:focus {
-  border-color: #4a4a6a;
-  box-shadow: 0 0 0 2px rgba(74, 74, 106, 0.3);
+  border-color: #444444;
+  box-shadow: 0 0 0 2px rgba(127, 109, 242, 0.15);
 }
 
 /* ─── Search Results ─────────────────────────────────────────────── */
@@ -86,7 +99,7 @@ body {
 .search-loading {
   text-align: center;
   padding: 12px;
-  color: #666;
+  color: #666666;
   font-size: 12px;
 }
 
@@ -98,7 +111,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #666;
+  color: #666666;
 }
 
 .item-list {
@@ -110,20 +123,28 @@ body {
   align-items: flex-start;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s ease;
+  border-left: 2px solid transparent;
 }
 
 .item:hover {
-  background: #1a1a2e;
+  background: #2a2a2a;
 }
 
-.item-icon {
-  font-size: 16px;
+.item-type-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 6px;
 }
+
+.item-type-dot.type-web { background: #4ade80; }
+.item-type-dot.type-kindle { background: #e5a84b; }
+.item-type-dot.type-pdf { background: #60a5fa; }
+.item-type-dot.type-youtube { background: #f87171; }
 
 .item-body {
   flex: 1;
@@ -136,12 +157,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #e0e0e0;
+  color: #dcddde;
 }
 
 .item-snippet {
   font-size: 11px;
-  color: #888;
+  color: #999999;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -150,32 +171,36 @@ body {
 
 .item-date {
   font-size: 11px;
-  color: #555;
+  color: #666666;
   flex-shrink: 0;
   margin-top: 2px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 .item-ai-copy {
   flex-shrink: 0;
-  background: none;
-  border: none;
-  color: #555;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 2px 4px;
+  font-size: 10px;
+  padding: 2px 6px;
   border-radius: 4px;
-  transition: color 0.15s ease, background 0.15s ease;
-  line-height: 1;
+  background: #333333;
+  color: #7f6df2;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
   margin-left: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .item-ai-copy:hover {
-  color: #e0e0e0;
-  background: #2a2a3e;
+  background: #7f6df2;
+  color: #fff;
 }
 
 .item-ai-copy.copied {
-  color: #4ade80;
+  background: #4ade80;
+  color: #1e1e1e;
 }
 
 /* ─── Stats Bar ──────────────────────────────────────────────────── */
@@ -185,9 +210,10 @@ body {
   justify-content: center;
   gap: 16px;
   padding: 10px 16px;
-  border-top: 1px solid #2a2a3e;
+  border-top: 1px solid #333333;
   font-size: 11px;
-  color: #666;
+  color: #666666;
+  font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 .stats-bar span {
@@ -205,7 +231,7 @@ body {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: #ccc;
+  color: #dcddde;
 }
 
 .empty-hint {
@@ -214,25 +240,25 @@ body {
   gap: 8px;
   padding: 8px 12px;
   margin: 8px 0;
-  background: #1a1a2e;
-  border: 1px solid #2a2a3e;
-  border-radius: 8px;
+  background: #262626;
+  border: 1px solid #333333;
+  border-radius: 6px;
   font-size: 12px;
-  color: #999;
+  color: #999999;
   text-align: left;
 }
 
 .empty-hint kbd {
-  background: #2a2a3e;
+  background: #333333;
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: monospace;
+  font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 11px;
-  color: #ccc;
+  color: #dcddde;
 }
 
 .empty-hint a {
-  color: #7dd3fc;
+  color: #7f6df2;
   text-decoration: none;
 }
 
@@ -256,7 +282,7 @@ body {
 
 .offline-state p {
   font-size: 12px;
-  color: #999;
+  color: #999999;
   margin-bottom: 16px;
 }
 
@@ -264,13 +290,13 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #1a1a2e;
-  border: 1px solid #2a2a3e;
-  border-radius: 8px;
+  background: #262626;
+  border: 1px solid #333333;
+  border-radius: 6px;
   padding: 10px 12px;
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 11px;
-  color: #ccc;
+  color: #dcddde;
   cursor: pointer;
   transition: border-color 0.2s ease;
   text-align: left;
@@ -278,12 +304,13 @@ body {
 }
 
 .cmd-box:hover {
-  border-color: #4a4a6a;
+  border-color: #444444;
 }
 
 .cmd-box .copy-icon {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: 12px;
+  color: #666666;
 }
 
 .copied-toast {
@@ -305,15 +332,22 @@ body {
   text-align: center;
 }
 
+.onboarding-logo {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+}
+
 .onboarding h2 {
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 8px;
+  color: #dcddde;
 }
 
 .onboarding p {
   font-size: 13px;
-  color: #999;
+  color: #999999;
   margin-bottom: 6px;
 }
 
@@ -335,7 +369,7 @@ body {
 .btn {
   padding: 8px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -347,21 +381,22 @@ body {
 }
 
 .btn-primary {
-  background: #4ade80;
-  color: #0f0f1a;
+  background: #7f6df2;
+  color: #fff;
 }
 
 .btn-primary:hover {
-  background: #22c55e;
+  background: #6c5ce7;
 }
 
 .btn-secondary {
-  background: #2a2a3e;
-  color: #ccc;
+  background: #333333;
+  color: #999999;
 }
 
 .btn-secondary:hover {
-  background: #3a3a4e;
+  background: #3a3a3a;
+  color: #dcddde;
 }
 
 .shortcut-visual {
@@ -371,17 +406,17 @@ body {
 }
 
 .shortcut-visual kbd {
-  background: #2a2a3e;
-  border: 1px solid #3a3a4e;
+  background: #333333;
+  border: 1px solid #444444;
   padding: 6px 10px;
   border-radius: 6px;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
-  color: #e0e0e0;
+  color: #dcddde;
 }
 
 .onboarding a {
-  color: #7dd3fc;
+  color: #7f6df2;
   text-decoration: none;
 }
 
@@ -407,8 +442,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -423,35 +458,35 @@ body {
 }
 
 .btn-capture {
-  background: #4ade80;
-  color: #0f0f1a;
+  background: #7f6df2;
+  color: #fff;
 }
 
 .btn-capture:hover {
-  background: #22c55e;
+  background: #6c5ce7;
 }
 
 .btn-capture.capturing {
-  background: #2a2a3e;
-  color: #999;
+  background: #333333;
+  color: #999999;
   cursor: wait;
 }
 
 .btn-capture.done {
-  background: #22863a;
-  color: #fff;
+  background: #4ade80;
+  color: #1e1e1e;
 }
 
 .btn-dashboard {
-  background: #1a1a2e;
-  color: #ccc;
-  border: 1px solid #2a2a3e;
+  background: #262626;
+  color: #999999;
+  border: 1px solid #333333;
 }
 
 .btn-dashboard:hover {
-  background: #22223a;
-  color: #fff;
-  border-color: #3a3a5e;
+  background: #2a2a2a;
+  color: #dcddde;
+  border-color: #444444;
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────── */
@@ -465,10 +500,10 @@ body::-webkit-scrollbar-track {
 }
 
 body::-webkit-scrollbar-thumb {
-  background: #2a2a3e;
+  background: #3a3a3a;
   border-radius: 3px;
 }
 
 body::-webkit-scrollbar-thumb:hover {
-  background: #3a3a4e;
+  background: #4a4a4a;
 }
