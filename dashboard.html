@@ -3,74 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClipBrain — Knowledge Base</title>
+  <title>ClipBrain</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --bg: #08081a;
+      --surface-1: #0f0f23;
+      --surface-2: #161633;
+      --border: #1e1e3e;
+      --border-hover: #2d2d5e;
+      --text-primary: #e4e4ed;
+      --text-secondary: #7a7a9a;
+      --text-muted: #4a4a6a;
+      --violet: #8b5cf6;
+      --emerald: #4ade80;
+      --amber: #f59e0b;
+      --danger: #ef4444;
+      --mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    }
+
     body {
-      background: #08081a;
-      color: #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      font-size: 15px;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--sans);
+      font-size: 14px;
       line-height: 1.6;
       min-height: 100vh;
     }
 
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #1e1e3a; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #2a2a4a; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
-    /* Header */
+    /* ── Header ─────────────────────────────────────────── */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 18px 32px;
-      border-bottom: 1px solid #1a1a35;
+      padding: 14px 32px;
+      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
-      background: #08081a;
+      background: rgba(8, 8, 26, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       z-index: 100;
     }
 
-    .header-title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      color: #e0e0e0;
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .header-title span { margin-right: 6px; }
+    .header-logo { width: 24px; height: 24px; flex-shrink: 0; }
 
-    .search-box { position: relative; width: 300px; }
+    .header-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .search-box { position: relative; width: 280px; }
 
     .search-input {
       width: 100%;
-      padding: 9px 14px 9px 38px;
-      background: #0f0f23;
-      border: 1px solid #1a1a35;
+      padding: 8px 14px 8px 36px;
+      background: rgba(15, 15, 35, 0.8);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      color: #e0e0e0;
+      color: var(--text-primary);
       font-size: 13px;
+      font-family: var(--sans);
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
     }
 
-    .search-input::placeholder { color: #555; }
+    .search-input::placeholder { color: var(--text-muted); }
 
     .search-input:focus {
-      border-color: #4ade80;
-      box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.12);
+      border-color: var(--violet);
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
     }
 
     .search-icon {
       position: absolute;
-      left: 12px;
+      left: 11px;
       top: 50%;
       transform: translateY(-50%);
-      color: #555;
-      font-size: 13px;
+      color: var(--text-muted);
       pointer-events: none;
     }
 
@@ -79,7 +104,7 @@
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      color: #555;
+      color: var(--text-muted);
       font-size: 16px;
       cursor: pointer;
       display: none;
@@ -87,120 +112,108 @@
       border: none;
       line-height: 1;
       padding: 2px;
+      font-family: var(--sans);
     }
 
-    .search-clear:hover { color: #888; }
+    .search-clear:hover { color: var(--text-secondary); }
     .search-clear.visible { display: block; }
 
-    /* Container */
+    /* ── Container ──────────────────────────────────────── */
     .container {
-      max-width: 900px;
+      max-width: 800px;
       margin: 0 auto;
       padding: 24px 32px 64px;
     }
 
-    /* Stats bar */
+    /* ── Stats Bar ──────────────────────────────────────── */
     .stats-bar {
       display: flex;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 32px;
     }
 
     .stat-card {
-      background: #0f0f23;
-      border: 1px solid #1a1a35;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 14px 20px;
+      padding: 16px 20px;
       flex: 1;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.15s, transform 0.15s;
+      transition: border-color 150ms ease, background 150ms ease;
       user-select: none;
     }
 
     .stat-card:hover {
-      border-color: #2a2a4a;
-      background: #13132d;
-      transform: translateY(-1px);
+      border-color: var(--border-hover);
+      background: var(--surface-2);
     }
 
-    .stat-card.active {
-      border-color: #4ade80;
-      background: #0d1a14;
-    }
-
-    .stat-card.active.kindle-filter {
-      border-color: #f59e0b;
-      background: #1a1508;
-    }
-
-    .stat-emoji {
-      font-size: 16px;
-      margin-bottom: 2px;
-    }
-
-    .stat-value {
-      font-size: 26px;
-      font-weight: 700;
-      color: #4ade80;
-      line-height: 1.2;
-    }
-
-    .stat-value.kindle { color: #f59e0b; }
-    .stat-value.highlight { color: #e0e0e0; }
+    .stat-card.active-books { border-color: var(--violet); background: rgba(139, 92, 246, 0.06); }
+    .stat-card.active-articles { border-color: var(--emerald); background: rgba(74, 222, 128, 0.06); }
+    .stat-card.active-highlights { border-color: var(--amber); background: rgba(245, 158, 11, 0.06); }
 
     .stat-label {
       font-size: 11px;
-      color: #666;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-top: 1px;
+      margin-bottom: 4px;
     }
 
-    /* Tabs */
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1.1;
+    }
+
+    .stat-value.books { color: var(--violet); }
+    .stat-value.articles { color: var(--emerald); }
+    .stat-value.highlights { color: var(--amber); }
+
+    /* ── Tabs ───────────────────────────────────────────── */
     .tabs {
       display: flex;
       gap: 4px;
       margin-bottom: 20px;
-      border-bottom: 1px solid #1a1a35;
-      padding-bottom: 0;
+      border-bottom: 1px solid var(--border);
     }
 
     .tab {
       padding: 8px 16px;
       font-size: 13px;
       font-weight: 500;
-      color: #666;
+      color: var(--text-muted);
       cursor: pointer;
+      border: none;
       border-bottom: 2px solid transparent;
       margin-bottom: -1px;
-      transition: color 0.2s, border-color 0.2s;
+      transition: color 150ms ease, border-color 150ms ease;
       user-select: none;
       background: none;
-      border-top: none;
-      border-left: none;
-      border-right: none;
+      font-family: var(--sans);
     }
 
-    .tab:hover { color: #aaa; }
+    .tab:hover { color: var(--text-secondary); }
 
     .tab.active {
-      color: #4ade80;
-      border-bottom-color: #4ade80;
+      color: var(--violet);
+      border-bottom-color: var(--violet);
     }
 
-    /* Cards */
+    /* ── Cards ──────────────────────────────────────────── */
     .card-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
     }
 
     .card {
-      background: #0f0f23;
-      border: 1px solid #1a1a35;
-      border-radius: 10px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       overflow: hidden;
-      transition: border-color 0.2s, opacity 0.3s, transform 0.3s;
+      transition: border-color 150ms ease, background 150ms ease, opacity 300ms ease, transform 300ms ease;
       opacity: 0;
       transform: translateY(8px);
     }
@@ -211,24 +224,28 @@
     }
 
     .card:hover {
-      border-color: #2a2a4a;
+      border-color: var(--border-hover);
+      background: rgba(15, 15, 35, 0.9);
     }
+
+    .card.kindle { border-left: 2px solid var(--amber); }
+    .card.web { border-left: 2px solid var(--emerald); }
 
     .card-header {
       display: flex;
       align-items: flex-start;
       gap: 12px;
-      padding: 14px 18px;
+      padding: 16px 20px;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 150ms ease;
     }
 
     .card-header:hover {
-      background: rgba(255,255,255,0.015);
+      background: rgba(255, 255, 255, 0.01);
     }
 
     .card-icon {
-      font-size: 18px;
+      font-size: 16px;
       flex-shrink: 0;
       margin-top: 1px;
     }
@@ -236,68 +253,84 @@
     .card-body { flex: 1; min-width: 0; }
 
     .card-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      color: #e0e0e0;
+      color: var(--text-primary);
       line-height: 1.4;
+      letter-spacing: -0.01em;
     }
 
     .card-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      font-family: var(--mono);
       font-size: 12px;
-      color: #888;
-      margin-top: 1px;
+    }
+
+    .card-count {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      white-space: nowrap;
+      margin-top: 2px;
     }
 
     .card-chevron {
-      color: #444;
-      font-size: 11px;
+      color: var(--text-muted);
+      font-size: 10px;
       flex-shrink: 0;
       margin-top: 4px;
-      transition: transform 0.25s ease;
+      transition: transform 200ms ease;
     }
 
     .card.expanded .card-chevron {
       transform: rotate(90deg);
     }
 
-    /* Card content area */
+    /* ── Card Content ───────────────────────────────────── */
     .card-content {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.35s ease;
+      transition: max-height 200ms ease;
     }
 
     .card.expanded .card-content {
       max-height: 5000px;
+      transition: max-height 350ms ease;
     }
 
     .card-content-inner {
-      padding: 0 18px 16px 48px;
-      border-top: 1px solid #1a1a35;
+      padding: 0 20px 20px 48px;
     }
 
-    /* Highlights */
+    /* ── Highlights ─────────────────────────────────────── */
     .hl-item {
-      padding: 8px 0 8px 14px;
-      margin-top: 10px;
-      border-left: 3px solid #4ade80;
+      padding: 10px 0 10px 16px;
+      margin-top: 12px;
+      border-left: 2px solid var(--violet);
       font-size: 14px;
-      color: #d0d0d0;
+      color: var(--text-primary);
       font-style: italic;
       line-height: 1.55;
+      position: relative;
     }
 
     .hl-item .hl-page {
       font-size: 12px;
-      color: #666;
+      color: var(--text-muted);
       font-style: normal;
-      margin-top: 3px;
+      font-family: var(--mono);
+      margin-top: 4px;
+      text-align: right;
     }
 
     .hl-item.note {
-      border-left-color: #f59e0b;
+      border-left-color: var(--amber);
+      font-style: normal;
       font-size: 13px;
-      color: #ccc;
+      color: var(--text-secondary);
     }
 
     .hl-item.note .note-prefix {
@@ -305,37 +338,40 @@
     }
 
     .hl-heading {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      color: #f59e0b;
-      margin-top: 14px;
+      color: var(--text-muted);
+      margin-top: 16px;
       margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
 
     .show-all-btn {
       display: inline-block;
-      margin-top: 14px;
+      margin-top: 16px;
       padding: 6px 14px;
       font-size: 12px;
-      color: #888;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid #1a1a35;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid var(--border);
       border-radius: 6px;
       cursor: pointer;
-      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+      font-family: var(--sans);
     }
 
     .show-all-btn:hover {
-      color: #ccc;
-      border-color: #2a2a4a;
-      background: rgba(255,255,255,0.05);
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+      background: var(--surface-2);
     }
 
-    /* Web content */
+    /* ── Web Content ────────────────────────────────────── */
     .web-paragraph {
       margin-bottom: 8px;
       font-size: 13px;
-      color: #bbb;
+      color: var(--text-secondary);
       line-height: 1.6;
     }
 
@@ -343,83 +379,93 @@
       font-size: 15px;
       font-weight: 700;
       margin: 16px 0 6px;
-      color: #e0e0e0;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
     }
 
     .web-heading-2 {
       font-size: 13px;
       font-weight: 600;
       margin: 14px 0 4px;
-      color: #ccc;
+      color: var(--text-secondary);
     }
 
-    /* Search results */
+    /* ── Search Results ─────────────────────────────────── */
     .search-results-container { display: none; }
     .search-results-container.active { display: block; }
 
     .search-result-header {
       font-size: 12px;
-      color: #666;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 12px;
+      font-family: var(--mono);
     }
 
     .search-result {
-      background: #0f0f23;
-      border: 1px solid #1a1a35;
-      border-radius: 10px;
-      padding: 14px 18px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
       margin-bottom: 8px;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.15s;
+      transition: border-color 150ms ease, background 150ms ease;
     }
 
     .search-result:hover {
-      border-color: #2a2a4a;
-      background: #13132d;
+      border-color: var(--border-hover);
+      background: var(--surface-2);
     }
 
     .search-result-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      color: #e0e0e0;
+      color: var(--text-primary);
     }
 
     .search-result-slug {
       font-size: 11px;
-      color: #555;
+      color: var(--text-muted);
       margin-top: 2px;
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-family: var(--mono);
     }
 
     .search-result-snippet {
       font-size: 13px;
-      color: #888;
-      margin-top: 5px;
+      color: var(--text-secondary);
+      margin-top: 6px;
       line-height: 1.5;
+    }
+
+    .search-result-relevance {
+      height: 2px;
+      background: var(--violet);
+      border-radius: 1px;
+      margin-top: 8px;
+      opacity: 0.5;
     }
 
     .no-results {
       text-align: center;
       padding: 32px;
-      color: #555;
+      color: var(--text-muted);
       font-size: 13px;
     }
 
-    /* Loading */
+    /* ── Loading ─────────────────────────────────────────── */
     .loading {
       text-align: center;
       padding: 48px;
-      color: #555;
+      color: var(--text-muted);
     }
 
     .loading-spinner {
       display: inline-block;
       width: 22px;
       height: 22px;
-      border: 2px solid #1a1a35;
-      border-top-color: #4ade80;
+      border: 2px solid var(--border);
+      border-top-color: var(--violet);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: 10px;
@@ -431,36 +477,71 @@
       display: inline-block;
       width: 14px;
       height: 14px;
-      border: 2px solid #1a1a35;
-      border-top-color: #4ade80;
+      border: 2px solid var(--border);
+      border-top-color: var(--violet);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
 
-    /* Empty state */
+    /* ── Empty State ─────────────────────────────────────── */
     .empty-state {
       text-align: center;
-      padding: 64px 24px;
-      color: #555;
+      padding: 80px 24px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .empty-logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      opacity: 0.4;
     }
 
     .empty-state h3 {
-      font-size: 16px;
-      color: #888;
-      margin-bottom: 6px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
     }
 
-    .empty-state p { font-size: 13px; }
+    .empty-state p {
+      font-size: 13px;
+      line-height: 1.8;
+      max-width: 360px;
+      margin: 0 auto;
+    }
 
-    /* Responsive */
+    .empty-state .steps {
+      margin-top: 24px;
+      text-align: left;
+      display: inline-block;
+    }
+
+    .empty-state .step {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .empty-state .step-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--violet);
+      font-weight: 600;
+    }
+
+    /* ── Responsive ──────────────────────────────────────── */
     @media (max-width: 640px) {
-      .header { padding: 14px 16px; }
+      .header { padding: 12px 16px; }
       .container { padding: 16px; }
       .search-box { width: 180px; }
-      .stat-card { padding: 10px 14px; }
-      .stat-value { font-size: 20px; }
+      .stat-card { padding: 12px 14px; }
+      .stat-value { font-size: 22px; }
       .stats-bar { gap: 8px; }
-      .card-content-inner { padding-left: 18px; }
+      .card-content-inner { padding-left: 20px; }
       .tab { padding: 8px 12px; font-size: 12px; }
     }
 
@@ -471,14 +552,31 @@
       .stat-card { min-width: 0; padding: 10px 12px; }
       .stat-value { font-size: 18px; }
     }
+
+    /* ── Utility ─────────────────────────────────────────── */
+    .hl-hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="header-title"><span>&#x1F9E0;</span> ClipBrain</div>
+    <div class="header-brand">
+      <svg class="header-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M28 58 L28 30"/>
+          <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
+          <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
+          <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
+          <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
+          <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
+        </g>
+      </svg>
+      <div class="header-title">ClipBrain</div>
+    </div>
     <div class="search-box">
-      <span class="search-icon">&#x1F50D;</span>
-      <input type="text" class="search-input" id="searchInput" placeholder="Search your knowledge base..." autocomplete="off">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search knowledge base..." autocomplete="off">
       <button class="search-clear" id="searchClear" aria-label="Clear search">&times;</button>
     </div>
   </div>
@@ -486,7 +584,7 @@
   <div class="container">
     <div id="loading" class="loading">
       <div class="loading-spinner"></div>
-      <div>Loading your knowledge base...</div>
+      <div>Loading knowledge base...</div>
     </div>
 
     <div id="content" style="display:none">
@@ -494,8 +592,8 @@
 
       <div class="tabs" id="tabBar">
         <button class="tab active" data-filter="all">All</button>
-        <button class="tab" data-filter="kindle">&#x1F4D6; Kindle Books</button>
-        <button class="tab" data-filter="web">&#x1F310; Web Articles</button>
+        <button class="tab" data-filter="kindle">&#x1F4D6; Books</button>
+        <button class="tab" data-filter="web">&#x1F310; Articles</button>
       </div>
 
       <div class="search-results-container" id="searchResults">
@@ -506,8 +604,23 @@
       <div id="mainContent">
         <div class="card-list" id="cardList"></div>
         <div id="emptyState" class="empty-state" style="display:none">
-          <h3>Your knowledge base is empty</h3>
-          <p>Start capturing pages with the Chrome extension or import Kindle highlights.</p>
+          <svg class="empty-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+              <path d="M28 58 L28 30"/>
+              <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
+              <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
+              <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
+              <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
+              <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
+            </g>
+          </svg>
+          <h3>Your brain is empty</h3>
+          <p>Start building your knowledge base.</p>
+          <div class="steps">
+            <div class="step"><span class="step-num">01</span> Install the Chrome extension</div>
+            <div class="step"><span class="step-num">02</span> Press Cmd+Shift+S on any article</div>
+            <div class="step"><span class="step-num">03</span> Visit read.amazon.com/notebook to import Kindle highlights</div>
+          </div>
         </div>
       </div>
     </div>
@@ -517,7 +630,7 @@
     const API = '';
 
     // State
-    let allCards = []; // { slug, title, author, domain, date, type, category, highlightCount, noteCount, element }
+    let allCards = [];
     let activeFilter = 'all';
     let searchTimeout = null;
     let statsData = null;
@@ -541,7 +654,7 @@
       } catch (err) {
         console.error('Failed to load:', err);
         document.getElementById('loading').innerHTML =
-          '<div style="color:#f87171">Failed to connect to server</div>';
+          '<div style="color:var(--danger)">Failed to connect to server</div>';
         return;
       }
 
@@ -552,7 +665,7 @@
       requestAnimationFrame(() => {
         const visible = document.querySelectorAll('.card[data-visible="1"]');
         visible.forEach((card, i) => {
-          setTimeout(() => card.classList.add('visible'), i * 40);
+          setTimeout(() => card.classList.add('visible'), i * 50);
         });
       });
     }
@@ -562,27 +675,25 @@
       const bar = document.getElementById('statsBar');
       bar.innerHTML = `
         <div class="stat-card" data-stat-filter="kindle" id="statBooks">
-          <div class="stat-emoji">&#x1F4DA;</div>
-          <div class="stat-value kindle">${stats.books || 0}</div>
           <div class="stat-label">Books</div>
+          <div class="stat-value books">${stats.books || 0}</div>
         </div>
         <div class="stat-card" data-stat-filter="web" id="statArticles">
-          <div class="stat-emoji">&#x1F310;</div>
-          <div class="stat-value">${stats.articles || 0}</div>
           <div class="stat-label">Articles</div>
+          <div class="stat-value articles">${stats.articles || 0}</div>
         </div>
-        <div class="stat-card" data-stat-filter="kindle" id="statHighlights">
-          <div class="stat-emoji">&#x2728;</div>
-          <div class="stat-value highlight">${stats.highlights || 0}</div>
+        <div class="stat-card" data-stat-filter="" id="statHighlights">
           <div class="stat-label">Highlights</div>
+          <div class="stat-value highlights">${stats.highlights || 0}</div>
         </div>
       `;
 
-      // Clickable stat cards
-      bar.querySelectorAll('.stat-card[data-stat-filter]').forEach(el => {
+      bar.querySelectorAll('.stat-card').forEach(el => {
         el.addEventListener('click', () => {
           const filter = el.dataset.statFilter;
-          setActiveFilter(filter);
+          if (filter) {
+            setActiveFilter(filter);
+          }
         });
       });
     }
@@ -647,7 +758,7 @@
 
     function createCardElement(data) {
       const card = document.createElement('div');
-      card.className = 'card';
+      card.className = 'card ' + data.category;
       card.dataset.slug = data.slug;
       card.dataset.category = data.category;
 
@@ -663,6 +774,7 @@
             <div class="card-title">${escapeHtml(data.title)}</div>
             <div class="card-meta">${metaParts.join(' &middot; ')}</div>
           </div>
+          <span class="card-count" id="count-${escapeAttr(data.slug)}"></span>
           <span class="card-chevron">&#x25B6;</span>
         </div>
         <div class="card-content">
@@ -688,23 +800,19 @@
       activeFilter = filter;
       applyFilter(filter);
 
-      // Update tabs
       document.querySelectorAll('.tab').forEach(t => {
         t.classList.toggle('active', t.dataset.filter === filter);
       });
 
-      // Update stat cards
-      document.querySelectorAll('.stat-card[data-stat-filter]').forEach(el => {
-        const isActive = el.dataset.statFilter === filter;
-        el.classList.toggle('active', isActive);
-        el.classList.toggle('kindle-filter', isActive && filter === 'kindle');
+      // Update stat card active states
+      document.querySelectorAll('.stat-card').forEach(el => {
+        el.classList.remove('active-books', 'active-articles', 'active-highlights');
       });
 
-      // Clear stat highlight if "all"
-      if (filter === 'all') {
-        document.querySelectorAll('.stat-card').forEach(el => {
-          el.classList.remove('active', 'kindle-filter');
-        });
+      if (filter === 'kindle') {
+        document.getElementById('statBooks').classList.add('active-books');
+      } else if (filter === 'web') {
+        document.getElementById('statArticles').classList.add('active-articles');
       }
     }
 
@@ -715,9 +823,8 @@
         cardData.element.style.display = show ? '' : 'none';
         if (show) {
           cardData.element.dataset.visible = '1';
-          // Re-trigger animation for newly shown cards
           if (!cardData.element.classList.contains('visible')) {
-            setTimeout(() => cardData.element.classList.add('visible'), visibleIndex * 30);
+            setTimeout(() => cardData.element.classList.add('visible'), visibleIndex * 50);
           }
           visibleIndex++;
         } else {
@@ -726,7 +833,6 @@
       }
     }
 
-    // Tab click handlers
     document.getElementById('tabBar').addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
       if (!tab) return;
@@ -756,16 +862,16 @@
         if (data.content) {
           const isKindle = slug.startsWith('kindle/');
           if (isKindle) {
-            renderKindleCard(contentInner, data.content);
+            renderKindleCard(contentInner, data.content, card);
           } else {
             renderWebCard(contentInner, data.content);
           }
         } else {
-          contentInner.innerHTML = '<div style="color:#555;font-size:13px;padding:8px 0">No content available</div>';
+          contentInner.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No content available</div>';
         }
         contentInner.dataset.loaded = '1';
       } catch (err) {
-        contentInner.innerHTML = '<div style="color:#f87171;font-size:13px;padding:8px 0">Failed to load content</div>';
+        contentInner.innerHTML = '<div style="color:var(--danger);font-size:13px;padding:8px 0">Failed to load content</div>';
       }
     }
 
@@ -774,7 +880,6 @@
       const kindleCards = allCards.filter(c => c.category === 'kindle').slice(0, 3);
       for (const cardData of kindleCards) {
         await toggleCard(cardData.element, true);
-        // For auto-expanded, collapse the "show all" by default — show preview only
         const inner = cardData.element.querySelector('.card-content-inner');
         if (inner && inner.dataset.loaded) {
           collapseToPreview(inner);
@@ -787,12 +892,10 @@
       const showAllBtn = inner.querySelector('.show-all-btn');
       if (allHighlights.length <= 3) return;
 
-      // Hide all after first 3
       allHighlights.forEach((el, i) => {
         if (i >= 3) el.classList.add('hl-hidden');
       });
 
-      // Hide headings that come after the 3rd highlight
       const allElements = inner.children;
       let hlSeen = 0;
       for (const el of allElements) {
@@ -808,7 +911,7 @@
     }
 
     // ── Render Kindle Content ─────────────────────────────────────────
-    function renderKindleCard(container, content) {
+    function renderKindleCard(container, content, card) {
       const fmMatch = content.match(/^---\n[\s\S]*?\n---\n/);
       let body = fmMatch ? content.slice(fmMatch[0].length).trim() : content.trim();
 
@@ -839,7 +942,6 @@
             parsedItems.push({ type: 'heading', text: heading });
           }
         } else if (trimmed.startsWith('- ')) {
-          // Notes often appear as list items
           noteCount++;
           const noteText = trimmed.replace(/^-\s*/, '');
           const pageMatch = noteText.match(/\(Page\s+(\d+)\)\s*$/i);
@@ -864,19 +966,12 @@
         }
       }
 
-      // Summary line
-      const summaryParts = [];
-      if (highlightCount) summaryParts.push(`${highlightCount} highlight${highlightCount !== 1 ? 's' : ''}`);
-      if (noteCount) summaryParts.push(`${noteCount} note${noteCount !== 1 ? 's' : ''}`);
-
-      // Update the card meta with counts
-      const card = container.closest('.card');
-      if (card && summaryParts.length) {
-        const meta = card.querySelector('.card-meta');
-        if (meta) {
-          const existing = meta.innerHTML;
-          meta.innerHTML = existing + (existing ? ' &middot; ' : '') +
-            '<span style="color:#f59e0b">' + summaryParts.join(' &middot; ') + '</span>';
+      // Update count in card header
+      const totalHighlights = highlightCount + noteCount;
+      if (card && totalHighlights > 0) {
+        const countEl = card.querySelector('.card-count');
+        if (countEl) {
+          countEl.textContent = totalHighlights + ' highlight' + (totalHighlights !== 1 ? 's' : '');
         }
       }
 
@@ -886,7 +981,7 @@
           html += `<div class="hl-heading">${escapeHtml(item.text)}</div>`;
         } else if (item.type === 'highlight') {
           html += `<div class="hl-item">
-            <div>"${escapeHtml(item.text)}"</div>
+            <div>${escapeHtml(item.text)}</div>
             ${item.page ? `<div class="hl-page">Page ${item.page}</div>` : ''}
           </div>`;
         } else if (item.type === 'note') {
@@ -897,21 +992,13 @@
         }
       }
 
-      // "Show all" button if more than 3
+      // "Show all" button
       const totalItems = parsedItems.filter(i => i.type === 'highlight' || i.type === 'note').length;
       if (totalItems > 3) {
-        html += `<button class="show-all-btn" onclick="showAllHighlights(this)">Show all ${totalItems} highlights &#x25BC;</button>`;
+        html += `<button class="show-all-btn" onclick="showAllHighlights(this)">Show all ${totalItems} highlights</button>`;
       }
 
-      container.innerHTML = html || '<div style="color:#555;font-size:13px;padding:8px 0">No highlights found</div>';
-
-      // Add hidden style
-      const style = document.createElement('style');
-      style.textContent = '.hl-hidden { display: none; }';
-      if (!document.querySelector('style[data-hl-hidden]')) {
-        style.dataset.hlHidden = '1';
-        document.head.appendChild(style);
-      }
+      container.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No highlights found</div>';
     }
 
     function showAllHighlights(btn) {
@@ -942,7 +1029,7 @@
           html += `<div class="web-paragraph">${escapeHtml(trimmed)}</div>`;
         }
       }
-      container.innerHTML = html || '<div style="color:#555;font-size:13px;padding:8px 0">No content</div>';
+      container.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No content</div>';
     }
 
     // ── Search ────────────────────────────────────────────────────────
@@ -995,9 +1082,11 @@
         searchResultHeader.textContent = `${data.results.length} result${data.results.length !== 1 ? 's' : ''}`;
 
         let html = '';
+        const maxScore = data.results[0].score || 1;
         for (const r of data.results) {
           const isKindle = r.slug && r.slug.startsWith('kindle/');
           const icon = isKindle ? '&#x1F4D6;' : '&#x1F310;';
+          const relevance = Math.max(20, ((r.score || 0) / maxScore) * 100);
 
           html += `
             <div class="search-result" data-slug="${escapeAttr(r.slug || '')}">
@@ -1007,6 +1096,7 @@
                   <div class="search-result-title">${escapeHtml(r.title || formatSlug(r.slug || ''))}</div>
                   <div class="search-result-slug">${escapeHtml(r.slug || '')}</div>
                   ${r.snippet ? `<div class="search-result-snippet">${escapeHtml(r.snippet)}</div>` : ''}
+                  <div class="search-result-relevance" style="width:${relevance}%"></div>
                 </div>
               </div>
             </div>
@@ -1027,7 +1117,6 @@
 
             const card = document.querySelector(`.card[data-slug="${CSS.escape(slug)}"]`);
             if (card) {
-              // Set appropriate filter
               const category = card.dataset.category;
               if (activeFilter !== 'all' && activeFilter !== category) {
                 setActiveFilter('all');
@@ -1041,7 +1130,7 @@
           });
         });
       } catch (err) {
-        searchResultsList.innerHTML = '<div class="no-results" style="color:#f87171">Search failed</div>';
+        searchResultsList.innerHTML = '<div class="no-results" style="color:var(--danger)">Search failed</div>';
         searchResultHeader.textContent = 'Search Results';
       }
     }

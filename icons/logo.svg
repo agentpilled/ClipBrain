@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Paperclip-brain: curved clip top forms brain hemisphere, inner curves suggest folds -->
+  <g stroke="#8b5cf6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Main paperclip outline forming brain shape -->
+    <!-- Straight stem (bottom) -->
+    <path d="M28 58 L28 30"/>
+    <!-- Clip curves up and over forming right brain hemisphere -->
+    <path d="M28 30 C28 14, 50 10, 50 26 C50 38, 36 40, 36 30 L36 44"/>
+    <!-- Left hemisphere curve -->
+    <path d="M28 30 C28 10, 8 10, 8 28 C8 42, 22 44, 28 38"/>
+    <!-- Brain fold suggestions -->
+    <path d="M18 22 C22 18, 28 20, 30 24" stroke-width="2.5" opacity="0.6"/>
+    <path d="M38 22 C42 19, 47 22, 48 27" stroke-width="2.5" opacity="0.6"/>
+    <path d="M24 34 C28 30, 34 30, 38 34" stroke-width="2.5" opacity="0.6"/>
+  </g>
+</svg>
