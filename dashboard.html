@@ -225,6 +225,7 @@
     .card-type.web { color: var(--green); }
     .card-type.pdf { color: var(--blue); }
     .card-type.youtube { color: #dc2626; }
+    .card-type.email { color: #38bdf8; }
 
     .card-ai-copy {
       flex-shrink: 0;
@@ -756,6 +757,7 @@
     .graph-info-type.web { color: var(--green); }
     .graph-info-type.pdf { color: var(--blue); }
     .graph-info-type.youtube { color: #dc2626; }
+    .graph-info-type.email { color: #38bdf8; }
 
     .graph-info-summary {
       font-size: 13px;
@@ -871,6 +873,7 @@
       <button class="tab" data-filter="web">Articles</button>
       <button class="tab" data-filter="pdf">PDFs</button>
       <button class="tab" data-filter="youtube">Videos</button>
+      <button class="tab" data-filter="email">Emails</button>
       <button class="tab" data-filter="graph">Graph</button>
     </div>
 
@@ -1022,6 +1025,7 @@
         if (state.stats.articles) parts.push(`${state.stats.articles} article${state.stats.articles !== 1 ? 's' : ''}`);
         if (state.stats.videos) parts.push(`${state.stats.videos} video${state.stats.videos !== 1 ? 's' : ''}`);
         if (state.stats.pdfs) parts.push(`${state.stats.pdfs} PDF${state.stats.pdfs !== 1 ? 's' : ''}`);
+        if (state.stats.emails) parts.push(`${state.stats.emails} email${state.stats.emails !== 1 ? 's' : ''}`);
         if (state.stats.highlights) parts.push(`${state.stats.highlights} highlight${state.stats.highlights !== 1 ? 's' : ''}`);
         statsLine.textContent = parts.join(' \u00b7 ');
       }
@@ -1037,6 +1041,8 @@
           items = items.filter(it => it.slug && it.slug.startsWith('pdf/'));
         } else if (state.filter === 'youtube') {
           items = items.filter(it => it.slug && it.slug.startsWith('youtube/'));
+        } else if (state.filter === 'email') {
+          items = items.filter(it => it.slug && it.slug.startsWith('email/'));
         }
         return items;
       }
@@ -1059,8 +1065,9 @@
           const isKindle = item.slug && item.slug.startsWith('kindle/');
           const isPdf = item.slug && item.slug.startsWith('pdf/');
           const isYouTube = item.slug && item.slug.startsWith('youtube/');
-          const typeLabel = isYouTube ? 'youtube' : isPdf ? 'pdf' : isKindle ? 'kindle' : 'web';
-          const typeClass = isYouTube ? 'youtube' : isPdf ? 'pdf' : isKindle ? 'kindle' : 'web';
+          const isEmail = item.slug && item.slug.startsWith('email/');
+          const typeLabel = isYouTube ? 'youtube' : isPdf ? 'pdf' : isKindle ? 'kindle' : isEmail ? 'email' : 'web';
+          const typeClass = isYouTube ? 'youtube' : isPdf ? 'pdf' : isKindle ? 'kindle' : isEmail ? 'email' : 'web';
 
           const highlightCount = item.highlight_count || item.highlights || '';
           const metaParts = [];
@@ -1657,6 +1664,7 @@
           kindle: '#e5a84b',
           web: '#4ade80',
           pdf: '#60a5fa',
+          email: '#38bdf8',
           edge: '#444444',
           edgeHighlight: '#7f6df2',
           label: '#999999',
@@ -2130,6 +2138,7 @@
           if (slug.startsWith('kindle/')) filterType = 'kindle';
           else if (slug.startsWith('web/')) filterType = 'web';
           else if (slug.startsWith('pdf/')) filterType = 'pdf';
+          else if (slug.startsWith('email/')) filterType = 'email';
 
           // Switch tab
           state.filter = filterType;

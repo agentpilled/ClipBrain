@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Capture web content into your ClipBrain knowledge base",
   "permissions": ["storage", "alarms", "activeTab", "scripting"],
-  "host_permissions": ["http://localhost:19285/*"],
+  "host_permissions": ["http://localhost:19285/*", "https://mail.google.com/*"],
   "background": {
     "service_worker": "service-worker.js"
   },
@@ -21,6 +21,11 @@
     {
       "matches": ["https://read.amazon.com/notebook*"],
       "js": ["kindle-content-script.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["gmail-content-script.js"],
       "run_at": "document_idle"
     }
   ],

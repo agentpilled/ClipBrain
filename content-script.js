@@ -3,6 +3,12 @@
 
 (function () {
   try {
+  // ─── Gmail detection — skip Readability, handled by gmail-content-script.js ──
+  if (location.hostname === 'mail.google.com') {
+    console.log('ClipBrain: on Gmail — skipping Readability, gmail-content-script handles this');
+    return;
+  }
+
   // ─── YouTube detection ──────────────────────────────────────────────
   function isYouTubeVideo() {
     const hostname = location.hostname;

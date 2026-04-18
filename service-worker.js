@@ -16,8 +16,14 @@ chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  // Inject content script + readability lib into the active tab
   try {
+    // Gmail: trigger the already-injected gmail content script
+    if (tab.url && tab.url.includes("mail.google.com")) {
+      chrome.tabs.sendMessage(tab.id, { type: "trigger-gmail-capture" });
+      return;
+    }
+
+    // Default: inject content script + readability lib into the active tab
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["lib/readability.js", "content-script.js"],
@@ -37,6 +43,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, error: err.message });
     });
     return true; // Keep message port open for async response
+  }
+
+  if (msg.type === "gmail-capture") {
+    handleGmailCapture(msg, sender.tab?.id).then(() => {
+      sendResponse({ ok: true });
+    }).catch((err) => {
+      sendResponse({ ok: false, error: err.message });
+    });
+    return true;
   }
 
   if (msg.type === "youtube-capture") {
@@ -88,6 +103,52 @@ async function handleCapture(data, tabId) {
       ensureAlarm();
     } else {
       notifyTab(tabId, false, "Capture failed: " + err.message);
+    }
+    setTempBadge("!", "#cc0000", 3000);
+  }
+}
+
+async function handleGmailCapture(data, tabId) {
+  // Build a gmail:// URL for dedup and slug generation
+  // Use subject + sender as the identity (Gmail URLs contain thread IDs but are unstable)
+  const subjectSlug = (data.subject || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+  const fromSlug = (data.fromSlug || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const gmailUrl = `gmail://${fromSlug}/${subjectSlug}`;
+
+  const payload = {
+    url: gmailUrl,
+    title: data.title || data.subject || 'Untitled email',
+    content: data.body || '',
+    selection: null,
+    capturedAt: new Date().toISOString(),
+    // Extra metadata for the server
+    emailFrom: data.from || '',
+    emailDate: data.date || '',
+    emailSubject: data.subject || '',
+  };
+
+  try {
+    const resp = await fetch(GBRAIN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (resp.ok || resp.status === 202) {
+      await incrementCaptureCount();
+      notifyTab(tabId, true, "Email saved to ClipBrain \u2713");
+    } else {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.error || `Server returned HTTP ${resp.status}`);
+    }
+  } catch (err) {
+    console.warn("ClipBrain Gmail capture failed:", err.message);
+    if (err.message.includes("fetch") || err.message.includes("Failed") || err.message.includes("NetworkError")) {
+      await enqueue(payload);
+      notifyTab(tabId, false, "ClipBrain offline — email queued for retry");
+      ensureAlarm();
+    } else {
+      notifyTab(tabId, false, "Email capture failed: " + err.message);
     }
     setTempBadge("!", "#cc0000", 3000);
   }

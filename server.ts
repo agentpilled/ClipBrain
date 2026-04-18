@@ -46,6 +46,13 @@ export function canonicalizeUrl(raw: string): string {
 }
 
 export function slugFromUrl(canonicalUrl: string, title?: string): string {
+  // Handle gmail:// URLs — generate slug as email/{from}/{subject}
+  if (canonicalUrl.startsWith('gmail://')) {
+    // gmail://from-slug/subject-slug
+    const path = canonicalUrl.replace('gmail://', '');
+    return `email/${path}`;
+  }
+
   // Handle kindle:// URLs — generate slug from title instead
   if (canonicalUrl.startsWith('kindle://')) {
     if (!title) {
@@ -121,6 +128,34 @@ export function buildMarkdown(opts: {
   if (opts.selection) {
     lines.push('', '## Highlights', '', `> ${opts.selection}`);
   }
+
+  return lines.join('\n') + '\n';
+}
+
+export function buildEmailMarkdown(opts: {
+  title: string;
+  subject: string;
+  from: string;
+  date: string;
+  content: string;
+  capturedAt?: string;
+}): string {
+  const timestamp = opts.capturedAt || new Date().toISOString();
+
+  const lines = [
+    '---',
+    `title: "${opts.subject.replace(/"/g, '\\"')}"`,
+    'type: reference',
+    `tags: [email, newsletter]`,
+    `from: "${opts.from.replace(/"/g, '\\"')}"`,
+    `captured_at: ${timestamp}`,
+  ];
+
+  if (opts.date) {
+    lines.push(`email_date: "${opts.date.replace(/"/g, '\\"')}"`);
+  }
+
+  lines.push('---', '', opts.content);
 
   return lines.join('\n') + '\n';
 }
@@ -230,8 +265,8 @@ async function handleRecent(req: Request): Promise<Response> {
     const all = parseGbrainOutput(output, 200);
 
     // Prioritize: kindle, web, pdf, and youtube captures first, then everything else
-    const captures = all.filter(i => i.slug?.startsWith('kindle/') || i.slug?.startsWith('web/') || i.slug?.startsWith('pdf/') || i.slug?.startsWith('youtube/'));
-    const other = all.filter(i => !i.slug?.startsWith('kindle/') && !i.slug?.startsWith('web/') && !i.slug?.startsWith('pdf/') && !i.slug?.startsWith('youtube/'));
+    const captures = all.filter(i => i.slug?.startsWith('kindle/') || i.slug?.startsWith('web/') || i.slug?.startsWith('pdf/') || i.slug?.startsWith('youtube/') || i.slug?.startsWith('email/'));
+    const other = all.filter(i => !i.slug?.startsWith('kindle/') && !i.slug?.startsWith('web/') && !i.slug?.startsWith('pdf/') && !i.slug?.startsWith('youtube/') && !i.slug?.startsWith('email/'));
     const sorted = [...captures, ...other].slice(0, limit);
 
     return corsResponse(200, { results: sorted });
@@ -263,6 +298,7 @@ async function handleStats(): Promise<Response> {
     let books = 0;
     let pdfs = 0;
     let videos = 0;
+    let emails = 0;
 
     for (const line of lines) {
       const parts = line.split('\t');
@@ -275,6 +311,8 @@ async function handleStats(): Promise<Response> {
         articles++;
       } else if (slug.startsWith('pdf/')) {
         pdfs++;
+      } else if (slug.startsWith('email/')) {
+        emails++;
       }
     }
 
@@ -289,10 +327,10 @@ async function handleStats(): Promise<Response> {
       highlights = 0;
     }
 
-    return corsResponse(200, { articles, books, pdfs, videos, highlights });
+    return corsResponse(200, { articles, books, pdfs, videos, emails, highlights });
   } catch (err: any) {
     console.error('[stats]', err.message);
-    return corsResponse(200, { articles: 0, books: 0, pdfs: 0, videos: 0, highlights: 0 });
+    return corsResponse(200, { articles: 0, books: 0, pdfs: 0, videos: 0, emails: 0, highlights: 0 });
   }
 }
 
@@ -389,7 +427,7 @@ async function obsidianSync(slug: string, markdown: string) {
     }
 
     // Determine subfolder (kindle, web, pdf, or youtube)
-    const subfolder = slug.startsWith('kindle/') ? 'kindle' : slug.startsWith('pdf/') ? 'pdf' : slug.startsWith('youtube/') ? 'youtube' : 'web';
+    const subfolder = slug.startsWith('kindle/') ? 'kindle' : slug.startsWith('pdf/') ? 'pdf' : slug.startsWith('youtube/') ? 'youtube' : slug.startsWith('email/') ? 'email' : 'web';
 
     // Clean filename: replace colons with " -", remove illegal chars, normalize whitespace
     let cleanTitle = title
@@ -471,7 +509,7 @@ async function handleObsidianSyncAll(): Promise<Response> {
     for (const line of lines) {
       const parts = line.split('\t');
       const slug = parts[0]?.trim();
-      if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/'))) continue;
+      if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/') && !slug.startsWith('email/'))) continue;
 
       try {
         const content = await gbrainExec(['get', slug]);
@@ -693,8 +731,9 @@ async function handleGraph(): Promise<Response> {
       title: item.title || item.slug,
       type: item.slug.startsWith('kindle/') ? 'kindle' :
             item.slug.startsWith('pdf/') ? 'pdf' :
-            item.slug.startsWith('youtube/') ? 'youtube' : 'web',
-      size: item.slug.startsWith('kindle/') ? 8 : item.slug.startsWith('youtube/') ? 7 : 5,
+            item.slug.startsWith('youtube/') ? 'youtube' :
+            item.slug.startsWith('email/') ? 'email' : 'web',
+      size: item.slug.startsWith('kindle/') ? 8 : item.slug.startsWith('youtube/') ? 7 : item.slug.startsWith('email/') ? 6 : 5,
     }));
 
     // Build edges from connections
@@ -799,7 +838,7 @@ async function handleReprocessAll(): Promise<Response> {
     for (const line of lines) {
       const parts = line.split('\t');
       const slug = parts[0]?.trim();
-      if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/'))) continue;
+      if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/') && !slug.startsWith('email/'))) continue;
 
       try {
         const content = await gbrainExec(['get', slug]);
@@ -956,7 +995,7 @@ async function handleCapture(req: Request): Promise<Response> {
     return corsResponse(400, { error: 'Invalid JSON body' });
   }
 
-  const { url, title, content, selection, capturedAt } = body;
+  const { url, title, content, selection, capturedAt, emailFrom, emailDate, emailSubject } = body;
 
   if (!url || typeof url !== 'string') {
     return corsResponse(400, { error: 'Missing required field: url' });
@@ -966,8 +1005,8 @@ async function handleCapture(req: Request): Promise<Response> {
   }
 
   let canonical: string;
-  if (url.startsWith('kindle://')) {
-    canonical = url; // kindle:// URLs don't need canonicalization
+  if (url.startsWith('kindle://') || url.startsWith('gmail://')) {
+    canonical = url; // internal URLs don't need canonicalization
   } else {
     try {
       canonical = canonicalizeUrl(url);
@@ -977,17 +1016,27 @@ async function handleCapture(req: Request): Promise<Response> {
   }
 
   const isKindle = canonical.startsWith('kindle://');
-  const domain = isKindle ? 'kindle' : new URL(canonical).hostname;
+  const isGmail = canonical.startsWith('gmail://');
+  const domain = isKindle ? 'kindle' : isGmail ? 'gmail' : new URL(canonical).hostname;
   const slug = slugFromUrl(canonical, title);
 
-  const markdown = buildMarkdown({
-    title,
-    canonicalUrl: canonical,
-    domain,
-    content: content || '',
-    selection: selection || null,
-    capturedAt,
-  });
+  const markdown = isGmail
+    ? buildEmailMarkdown({
+        title,
+        subject: emailSubject || title,
+        from: emailFrom || '',
+        date: emailDate || '',
+        content: content || '',
+        capturedAt,
+      })
+    : buildMarkdown({
+        title,
+        canonicalUrl: canonical,
+        domain,
+        content: content || '',
+        selection: selection || null,
+        capturedAt,
+      });
 
   // Fire-and-forget — don't block the response on gbrain
   gbrainPut(slug, markdown).then(() => {
