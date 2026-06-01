@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buildGbrainListCommands,
   buildCorpusReport,
   classifyCorpusIssues,
   countKnowledgeAtoms,
@@ -97,6 +98,15 @@ describe('corpus report helpers', () => {
       'pdf/paper',
     ]);
     expect(items[0].title).toBe('Deep Work');
+  });
+
+  test('builds typed sorted gbrain list commands for broader corpus coverage', () => {
+    const commands = buildGbrainListCommands(10000).map(command => command.join(' '));
+
+    expect(commands).toContain('list --limit 10000');
+    expect(commands).toContain('list --type note --limit 10000 --sort updated_desc');
+    expect(commands).toContain('list --type note --limit 10000 --sort updated_asc');
+    expect(commands).toContain('list --type reference --limit 10000 --sort slug');
   });
 });
 

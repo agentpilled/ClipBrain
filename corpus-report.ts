@@ -3,6 +3,7 @@ import { isClipBrainSlug, parseGbrainList } from './backfill.ts';
 import type { BackfillListItem } from './backfill.ts';
 
 const FALLBACK_GBRAIN_TYPES = ['reference', 'note'];
+const FALLBACK_GBRAIN_SORTS = ['updated_desc', 'updated_asc', 'created_desc', 'slug'];
 
 export type CorpusItem = {
   slug: string;
@@ -145,16 +146,35 @@ export function mergeUniqueGbrainListItems(outputs: string[]): BackfillListItem[
   return [...bySlug.values()];
 }
 
-async function loadGbrainListItems(listLimit: number): Promise<BackfillListItem[]> {
-  try {
-    return mergeUniqueGbrainListItems([await gbrainExec(['list', '--limit', String(listLimit)])]);
-  } catch (err) {
-    const outputs: string[] = [];
-    for (const type of FALLBACK_GBRAIN_TYPES) {
-      outputs.push(await gbrainExec(['list', '--type', type, '--limit', String(listLimit)]));
+export function buildGbrainListCommands(listLimit: number): string[][] {
+  const commands: string[][] = [['list', '--limit', String(listLimit)]];
+
+  for (const type of FALLBACK_GBRAIN_TYPES) {
+    for (const sort of FALLBACK_GBRAIN_SORTS) {
+      commands.push(['list', '--type', type, '--limit', String(listLimit), '--sort', sort]);
     }
-    return mergeUniqueGbrainListItems(outputs);
   }
+
+  return commands;
+}
+
+async function loadGbrainListItems(listLimit: number): Promise<BackfillListItem[]> {
+  const outputs: string[] = [];
+  const errors: string[] = [];
+
+  for (const command of buildGbrainListCommands(listLimit)) {
+    try {
+      outputs.push(await gbrainExec(command));
+    } catch (err: any) {
+      errors.push(`${command.join(' ')}: ${err?.message || String(err)}`);
+    }
+  }
+
+  if (outputs.length === 0) {
+    throw new Error(`All gbrain list commands failed: ${errors.join('; ')}`);
+  }
+
+  return mergeUniqueGbrainListItems(outputs);
 }
 
 export async function loadCorpusItems(listLimit: number): Promise<CorpusItem[]> {
