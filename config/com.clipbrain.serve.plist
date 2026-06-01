@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.gbrain.serve</string>
+    <string>com.clipbrain.serve</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/luca/.bun/bin/bun</string>
+        <string>/path/to/bun</string>
         <string>run</string>
         <string>server.ts</string>
     </array>
@@ -15,9 +15,9 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/luca/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/path/to/bun/dir:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
-        <string>/Users/luca</string>
+        <string>/Users/you</string>
     </dict>
 
     <key>RunAtLoad</key>
@@ -27,12 +27,12 @@
     <true/>
 
     <key>WorkingDirectory</key>
-    <string>/Users/luca/Desktop/ClipBrain</string>
+    <string>/path/to/clipbrain</string>
 
     <key>StandardOutPath</key>
-    <string>/Users/luca/Library/Logs/gbrain-capture.log</string>
+    <string>/Users/you/Library/Logs/clipbrain.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/luca/Library/Logs/gbrain-capture.log</string>
+    <string>/Users/you/Library/Logs/clipbrain.log</string>
 </dict>
 </plist>

@@ -1,11 +1,13 @@
 {
-  "name": "gbrain-capture",
+  "name": "clipbrain",
   "version": "0.1.0",
-  "description": "Chrome extension to capture web content into ClipBrain",
+  "description": "Local memory layer for AI agents",
   "private": true,
   "scripts": {
     "vendor": "cp node_modules/@mozilla/readability/Readability.js lib/readability.js",
     "setup": "./setup.sh",
+    "doctor": "bun run doctor.ts",
+    "launch:check": "bun run doctor && bun audit && bun test && bash -n setup.sh setup-mcp.sh config/install-launchd.sh",
     "backfill": "bun run backfill.ts",
     "corpus": "bun run corpus-report.ts",
     "cleanup-plan": "bun run cleanup-plan.ts",

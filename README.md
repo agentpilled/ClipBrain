@@ -1,8 +1,10 @@
 # ClipBrain
 
-**Your AI doesn't know what you've read. ClipBrain fixes that.**
+**Clip anything into agent-ready memory.**
 
-An open source Chrome extension that captures everything you read and makes it searchable by your AI. Built on top of [@garrytan](https://twitter.com/garrytan)'s [GBrain](https://github.com/nichochar/gbrain) knowledge engine. Inspired by [@karpathy](https://twitter.com/karpathy)'s [post about building personal knowledge bases with LLMs](https://x.com/karpathy/status/20398050659526644595).
+ClipBrain is an open source, local-first memory layer for AI agents. Clip web pages, Kindle highlights, Gmail threads, YouTube transcripts, and PDFs into a searchable knowledge base that your AI tools can use through MCP.
+
+Built on top of [@garrytan](https://twitter.com/garrytan)'s [GBrain](https://github.com/nichochar/gbrain) knowledge engine. Inspired by [@karpathy](https://twitter.com/karpathy)'s [post about building personal knowledge bases with LLMs](https://x.com/karpathy/status/20398050659526644595).
 
 One shortcut: **Cmd+Shift+S**. Your AI never starts from zero again.
 
@@ -39,9 +41,12 @@ You need [Bun](https://bun.sh) and Chrome.
 git clone https://github.com/agentpilled/clipbrain
 cd clipbrain
 ./setup.sh
+bun run doctor
 ```
 
 This single command installs dependencies, ensures the `gbrain` CLI is available, creates a local database, auto-configures your AI tools, connects to Obsidian (if installed), and starts a background service.
+
+`bun run doctor` verifies the local server, Chrome extension assets, `gbrain`, MCP setup, and optional enrichment integrations.
 
 Then load the Chrome extension:
 
@@ -75,7 +80,7 @@ After setup, your AI already has access via MCP. Just talk naturally:
 - *"What did that YouTube video say about AI moats?"*
 - *"Summarize what I've read about decision-making"*
 
-Works with **Claude Code**, **OpenClaw**, **Claude Desktop**, **Cursor**, and any MCP-compatible tool. Setup registers the broad `gbrain` MCP tools plus a ClipBrain-specific `context_pack` tool for cited agent handoffs.
+Works with **Claude Code**, **OpenClaw**, **Claude Desktop**, **Cursor**, Codex-style coding agents, and any MCP-compatible tool. Setup registers the broad `gbrain` MCP tools plus a ClipBrain-specific `context_pack` tool for cited agent handoffs.
 
 For agent workflows that need a compact handoff, ClipBrain can build a cited
 context pack from your saved knowledge:
@@ -165,6 +170,8 @@ Everything runs locally. If `OPENAI_API_KEY` is enabled, captured text is sent
 to OpenAI for optional summaries and knowledge atoms. Embeddings use your
 configured `gbrain` provider.
 
+See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md) for the exact local-first boundary, optional network calls, and hardening notes.
+
 ## Requirements
 
 - [Bun](https://bun.sh)
@@ -173,8 +180,26 @@ configured `gbrain` provider.
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) (optional, for YouTube transcripts)
 - Obsidian (optional, for vault sync)
 
+## Launch checks
+
+Before sharing a build or cutting a release:
+
+```bash
+bun run launch:check
+```
+
+For a fast health check during development:
+
+```bash
+bun run doctor
+```
+
 ## Credits
 
 - **[GBrain](https://github.com/nichochar/gbrain)** by [@garrytan](https://twitter.com/garrytan) — the knowledge engine powering ClipBrain (pgvector, hybrid search, MCP)
 - **[@karpathy](https://twitter.com/karpathy)** — his [post about LLM knowledge bases](https://x.com/karpathy/status/20398050659526644595) described the exact system I wanted to build
 - Built with **[Claude Code](https://claude.ai/claude-code)**
+
+## License
+
+MIT. See [LICENSE](LICENSE).

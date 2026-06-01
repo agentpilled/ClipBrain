@@ -18,6 +18,8 @@ Important files:
 - `corpus-report.ts`: read-only corpus quality report for junk/duplicate audit
 - `cleanup-plan.ts`: read-only cleanup recommendations; never deletes or writes
 - `cleanup-apply.ts`: explicit approval-gated cleanup executor with backups/logs
+- `gbrain-list.ts`: shared robust `gbrain list` scanner used by server, corpus, and cleanup flows
+- `doctor.ts`: first-run diagnostics for launch readiness and local setup issues
 - `service-worker.js`: MV3 background worker, capture dispatch, offline queue
 - `content-script.js`, `kindle-content-script.js`, `gmail-content-script.js`: page extractors
 - `post-process.ts`: optional OpenAI enrichment after a capture is saved
@@ -27,8 +29,8 @@ Important files:
 
 ## Runtime Facts
 
-- Use Bun. Primary checks are `bun test`, `bun audit`, and shell syntax checks
-  for setup scripts.
+- Use Bun. Primary checks are `bun run doctor`, `bun test`, `bun audit`, and
+  shell syntax checks for setup scripts.
 - The server binds to `127.0.0.1:19285` by default. It can be overridden with
   `--host`, `--port`, `GBRAIN_CAPTURE_HOST`, and `GBRAIN_CAPTURE_PORT`.
 - MCP setup registers both `gbrain` (`gbrain serve`) and `clipbrain`
@@ -72,6 +74,7 @@ Run:
 
 ```bash
 bun audit
+bun run doctor
 bun test
 bash -n setup.sh setup-mcp.sh config/install-launchd.sh
 ```

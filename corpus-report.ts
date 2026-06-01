@@ -1,9 +1,6 @@
 import { getBackfillReason, parseFrontmatter } from './post-process.ts';
-import { isClipBrainSlug, parseGbrainList } from './backfill.ts';
-import type { BackfillListItem } from './backfill.ts';
-
-const FALLBACK_GBRAIN_TYPES = ['reference', 'note'];
-const FALLBACK_GBRAIN_SORTS = ['updated_desc', 'updated_asc', 'created_desc', 'slug'];
+import { loadClipBrainListItems } from './gbrain-list.ts';
+export { buildGbrainListCommands, mergeUniqueGbrainListItems } from './gbrain-list.ts';
 
 export type CorpusItem = {
   slug: string;
@@ -133,52 +130,8 @@ export function formatCorpusReport(report: CorpusReport): string {
   return lines.join('\n');
 }
 
-export function mergeUniqueGbrainListItems(outputs: string[]): BackfillListItem[] {
-  const bySlug = new Map<string, BackfillListItem>();
-
-  for (const output of outputs) {
-    for (const item of parseGbrainList(output)) {
-      if (!item.slug || bySlug.has(item.slug)) continue;
-      bySlug.set(item.slug, item);
-    }
-  }
-
-  return [...bySlug.values()];
-}
-
-export function buildGbrainListCommands(listLimit: number): string[][] {
-  const commands: string[][] = [['list', '--limit', String(listLimit)]];
-
-  for (const type of FALLBACK_GBRAIN_TYPES) {
-    for (const sort of FALLBACK_GBRAIN_SORTS) {
-      commands.push(['list', '--type', type, '--limit', String(listLimit), '--sort', sort]);
-    }
-  }
-
-  return commands;
-}
-
-async function loadGbrainListItems(listLimit: number): Promise<BackfillListItem[]> {
-  const outputs: string[] = [];
-  const errors: string[] = [];
-
-  for (const command of buildGbrainListCommands(listLimit)) {
-    try {
-      outputs.push(await gbrainExec(command));
-    } catch (err: any) {
-      errors.push(`${command.join(' ')}: ${err?.message || String(err)}`);
-    }
-  }
-
-  if (outputs.length === 0) {
-    throw new Error(`All gbrain list commands failed: ${errors.join('; ')}`);
-  }
-
-  return mergeUniqueGbrainListItems(outputs);
-}
-
 export async function loadCorpusItems(listLimit: number): Promise<CorpusItem[]> {
-  const items = (await loadGbrainListItems(listLimit)).filter(item => isClipBrainSlug(item.slug));
+  const items = await loadClipBrainListItems(gbrainExec, listLimit);
   const result: CorpusItem[] = [];
 
   for (const item of items) {

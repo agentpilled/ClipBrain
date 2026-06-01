@@ -58,8 +58,8 @@ If your OpenClaw version supports `mcpServers` in config, add:
 Copy the plugin manifest into your OpenClaw extensions:
 
 ```bash
-mkdir -p ~/.openclaw/extensions/gbrain-capture
-cp /path/to/gbrain-capture/config/openclaw-plugin.json ~/.openclaw/extensions/gbrain-capture/plugin.json
+mkdir -p ~/.openclaw/extensions/clipbrain
+cp /path/to/clipbrain/config/openclaw-plugin.json ~/.openclaw/extensions/clipbrain/plugin.json
 ```
 
 Then add to your `openclaw.json` plugins section:
@@ -67,9 +67,9 @@ Then add to your `openclaw.json` plugins section:
 ```json
 {
   "plugins": {
-    "allow": ["gbrain-capture"],
+    "allow": ["clipbrain"],
     "load": {
-      "paths": ["~/.openclaw/extensions/gbrain-capture"]
+      "paths": ["~/.openclaw/extensions/clipbrain"]
     }
   }
 }

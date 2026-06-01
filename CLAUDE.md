@@ -79,10 +79,16 @@ groups, and pages still pending backfill.
 quoted/highlight evidence safety check. `--execute` still requires exact
 approval tokens and blocks merge deletes whose evidence is not verified.
 
+Shared corpus listing should go through `gbrain-list.ts`. It broadens `gbrain
+list` scans across type/sort combinations and deduplicates by slug, which keeps
+dashboard stats, graph views, diagnostics, reprocess flows, and corpus reports
+consistent even when the default `gbrain list` window misses older captures.
+
 ## Setup
 
 ```bash
 ./setup.sh        # installs deps, ensures gbrain CLI, initializes database, auto-starts server via launchd
+bun run doctor    # verifies local server, extension assets, gbrain, and MCP setup
 ```
 
 The server auto-starts on login via launchd. To manually start: `bun run serve`
@@ -90,7 +96,10 @@ The server auto-starts on login via launchd. To manually start: `bun run serve`
 ## Testing
 
 ```bash
+bun run doctor
+bun audit
 bun test
+bash -n setup.sh setup-mcp.sh config/install-launchd.sh
 ```
 
 ## Key shortcuts

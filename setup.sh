@@ -306,9 +306,8 @@ if [ "$(uname)" = "Darwin" ]; then
   echo ""
   echo "→ Installing background service..."
 
-  # Update plist with correct paths
-  PLIST_SRC="$SCRIPT_DIR/config/com.gbrain.serve.plist"
-  PLIST_DST="$HOME/Library/LaunchAgents/com.gbrain.serve.plist"
+  PLIST_DST="$HOME/Library/LaunchAgents/com.clipbrain.serve.plist"
+  LEGACY_PLIST_DST="$HOME/Library/LaunchAgents/com.gbrain.serve.plist"
   # Generate plist with current paths
   BUN_DIR="$(dirname "$BUN_PATH")"
   OPENAI_ENV_BLOCK=""
@@ -324,7 +323,7 @@ if [ "$(uname)" = "Darwin" ]; then
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.gbrain.serve</string>
+    <string>com.clipbrain.serve</string>
     <key>ProgramArguments</key>
     <array>
         <string>$BUN_PATH</string>
@@ -345,14 +344,15 @@ if [ "$(uname)" = "Darwin" ]; then
     <key>WorkingDirectory</key>
     <string>$SCRIPT_DIR</string>
     <key>StandardOutPath</key>
-    <string>$HOME/Library/Logs/gbrain-capture.log</string>
+    <string>$HOME/Library/Logs/clipbrain.log</string>
     <key>StandardErrorPath</key>
-    <string>$HOME/Library/Logs/gbrain-capture.log</string>
+    <string>$HOME/Library/Logs/clipbrain.log</string>
 </dict>
 </plist>
 PLISTEOF
 
   # Load the service (unload first if exists)
+  launchctl unload "$LEGACY_PLIST_DST" 2>/dev/null || true
   launchctl unload "$PLIST_DST" 2>/dev/null || true
   launchctl load "$PLIST_DST"
 
@@ -363,7 +363,7 @@ PLISTEOF
       break
     fi
     if [ $i -eq 15 ]; then
-      echo "  ⚠ Server didn't start within 15 seconds. Check ~/Library/Logs/gbrain-capture.log"
+      echo "  ⚠ Server didn't start within 15 seconds. Check ~/Library/Logs/clipbrain.log"
     fi
     sleep 1
   done

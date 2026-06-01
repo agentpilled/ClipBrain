@@ -1,7 +1,7 @@
 {
-  "name": "gbrain-capture",
+  "name": "clipbrain",
   "version": "0.1.0",
-  "description": "Capture web content and make it searchable by your AI via ClipBrain",
+  "description": "Local memory layer for AI agents via ClipBrain",
   "family": "bundle-plugin",
   "mcpServers": {
     "gbrain": {

@@ -5,6 +5,7 @@
 
 import { PDFParse } from 'pdf-parse';
 import { getBackfillReason, KNOWLEDGE_COMPILER_VERSION, postProcess } from './post-process.ts';
+import { isClipBrainCaptureSlug, loadClipBrainListItems, loadClipBrainListOutput } from './gbrain-list.ts';
 
 const DEFAULT_PORT = 19285;
 const DEFAULT_HOST = '127.0.0.1';
@@ -322,14 +323,11 @@ async function handleRecent(req: Request): Promise<Response> {
   const limit = parseInt(url.searchParams.get('limit') || '10', 10);
 
   try {
-    // Fetch more than needed so we can filter and prioritize
-    const output = await gbrainExec(['list', '--limit', '200']);
+    // Fetch more than needed so we can filter and prioritize.
+    const output = await loadClipBrainListOutput(gbrainExec, 200);
     const all = parseGbrainOutput(output, 200);
 
-    // Prioritize: kindle, web, pdf, and youtube captures first, then everything else
-    const captures = all.filter(i => i.slug?.startsWith('kindle/') || i.slug?.startsWith('web/') || i.slug?.startsWith('pdf/') || i.slug?.startsWith('youtube/') || i.slug?.startsWith('email/'));
-    const other = all.filter(i => !i.slug?.startsWith('kindle/') && !i.slug?.startsWith('web/') && !i.slug?.startsWith('pdf/') && !i.slug?.startsWith('youtube/') && !i.slug?.startsWith('email/'));
-    const sorted = [...captures, ...other].slice(0, limit);
+    const sorted = all.filter(i => isClipBrainCaptureSlug(i.slug || '')).slice(0, limit);
 
     return corsResponse(200, { results: sorted });
   } catch (err: any) {
@@ -409,8 +407,7 @@ export function detectCaptureType(slug: string): CaptureLogEntry['type'] {
 
 async function handleStats(): Promise<Response> {
   try {
-    const output = await gbrainExec(['list', '--limit', '10000']);
-    const lines = output.trim().split('\n').filter(Boolean);
+    const items = await loadClipBrainListItems(gbrainExec, 10000);
 
     let articles = 0;
     let books = 0;
@@ -418,9 +415,8 @@ async function handleStats(): Promise<Response> {
     let videos = 0;
     let emails = 0;
 
-    for (const line of lines) {
-      const parts = line.split('\t');
-      const slug = parts[0]?.trim() || '';
+    for (const item of items) {
+      const slug = item.slug || '';
       if (slug.startsWith('kindle/')) {
         books++;
       } else if (slug.startsWith('youtube/')) {
@@ -971,22 +967,6 @@ function parseGbrainOutput(output: string, limit: number): Array<Record<string, 
   return results;
 }
 
-function mergeGbrainListOutputs(outputs: string[]): string {
-  const seen = new Set<string>();
-  const lines: string[] = [];
-
-  for (const output of outputs) {
-    for (const line of output.trim().split('\n').filter(Boolean)) {
-      const slug = line.split('\t')[0]?.trim();
-      if (!slug || seen.has(slug)) continue;
-      seen.add(slug);
-      lines.push(line);
-    }
-  }
-
-  return lines.join('\n');
-}
-
 // ---------------------------------------------------------------------------
 // Obsidian vault sync
 // ---------------------------------------------------------------------------
@@ -1084,17 +1064,14 @@ async function handleObsidianSyncAll(): Promise<Response> {
       return corsResponse(400, { error: 'Obsidian sync not enabled' });
     }
 
-    // List all items
-    const output = await gbrainExec(['list', '--limit', '10000']);
-    const lines = output.trim().split('\n').filter(Boolean);
+    const items = await loadClipBrainListItems(gbrainExec, 10000);
 
     let synced = 0;
     let failed = 0;
 
-    for (const line of lines) {
-      const parts = line.split('\t');
-      const slug = parts[0]?.trim();
-      if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/') && !slug.startsWith('email/'))) continue;
+    for (const item of items) {
+      const slug = item.slug;
+      if (!slug || !isClipBrainCaptureSlug(slug)) continue;
 
       try {
         const content = await gbrainExec(['get', slug]);
@@ -1367,16 +1344,10 @@ async function handleGraph(): Promise<Response> {
 
   try {
     // Get all items
-    const output = await gbrainExec(['list', '--limit', '1000']);
+    const output = await loadClipBrainListOutput(gbrainExec, 1000);
     const items = parseGbrainOutput(output, 1000);
 
-    // Only include captures (kindle/, web/, pdf/, youtube/)
-    const captures = items.filter(i =>
-      i.slug?.startsWith('kindle/') ||
-      i.slug?.startsWith('web/') ||
-      i.slug?.startsWith('pdf/') ||
-      i.slug?.startsWith('youtube/')
-    );
+    const captures = items.filter(i => isClipBrainCaptureSlug(i.slug || ''));
 
     // Build nodes
     const nodes = captures.map(item => ({
@@ -1525,16 +1496,7 @@ function parseBooleanParam(value: string): boolean {
 }
 
 async function listPagesForReprocess(): Promise<string> {
-  try {
-    return await gbrainExec(['list', '--limit', '10000']);
-  } catch (err: any) {
-    console.warn(`[reprocess-all] full gbrain list failed, falling back to type scans: ${err?.message || String(err)}`);
-    const outputs = await Promise.all([
-      gbrainExec(['list', '--type', 'reference', '--limit', '10000']),
-      gbrainExec(['list', '--type', 'note', '--limit', '10000']),
-    ]);
-    return mergeGbrainListOutputs(outputs);
-  }
+  return loadClipBrainListOutput(gbrainExec, 10000);
 }
 
 async function handleReprocessAll(req: Request): Promise<Response> {
@@ -1951,13 +1913,7 @@ async function handleDiagnostics(): Promise<Response> {
     // Get total count from stats
     try {
       const statsOutput = await listPagesForReprocess();
-      captures = parseGbrainOutput(statsOutput, 10000).filter(i =>
-        i.slug?.startsWith('kindle/') ||
-        i.slug?.startsWith('web/') ||
-        i.slug?.startsWith('pdf/') ||
-        i.slug?.startsWith('youtube/') ||
-        i.slug?.startsWith('email/')
-      ).length;
+      captures = parseGbrainOutput(statsOutput, 10000).filter(i => isClipBrainCaptureSlug(i.slug || '')).length;
     } catch {}
   } catch {}
 
