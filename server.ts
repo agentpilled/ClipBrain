@@ -891,6 +891,8 @@ async function handleConnections(req: Request): Promise<Response> {
       summary = summarySection[1].trim();
     }
 
+    const atoms = parseKnowledgeAtoms(content);
+
     // Extract tags from frontmatter (YAML list format)
     const tags: string[] = [];
     const tagLines = content.match(/^tags:\s*\n((?:\s+-\s+.+\n)*)/m);
@@ -923,11 +925,74 @@ async function handleConnections(req: Request): Promise<Response> {
       }
     }
 
-    return corsResponse(200, { slug, summary, tags, connections });
+    return corsResponse(200, { slug, summary, tags, atoms, connections });
   } catch (err: any) {
     console.error('[connections]', err.message);
     return corsResponse(404, { error: 'Page not found' });
   }
+}
+
+export function parseKnowledgeAtoms(content: string): {
+  claims: string[];
+  quotes: string[];
+  entities: Array<{ name: string; type: string; relevance: string }>;
+  questions: string[];
+  actions: string[];
+} {
+  const atoms = {
+    claims: [] as string[],
+    quotes: [] as string[],
+    entities: [] as Array<{ name: string; type: string; relevance: string }>,
+    questions: [] as string[],
+    actions: [] as string[],
+  };
+
+  const section = content.match(/## Knowledge Atoms\s*\n([\s\S]*?)(?=\n## |\n---\n|$)/);
+  if (!section) return atoms;
+
+  atoms.claims = parseBulletSubsection(section[1], 'Claims');
+  atoms.quotes = parseQuoteSubsection(section[1], 'Quotes');
+  atoms.questions = parseBulletSubsection(section[1], 'Open Questions');
+  atoms.actions = parseBulletSubsection(section[1], 'Actions').map(action => action.replace(/^\[ \]\s*/, '').trim());
+
+  const entitiesSection = extractSubsection(section[1], 'Entities');
+  if (entitiesSection) {
+    for (const line of entitiesSection.split('\n')) {
+      const match = line.match(/^-\s+\*\*(.+?)\*\*\s+\((.+?)\)(?:\s+-\s+(.+))?$/);
+      if (!match) continue;
+      atoms.entities.push({
+        name: match[1].trim(),
+        type: match[2].trim(),
+        relevance: (match[3] || '').trim(),
+      });
+    }
+  }
+
+  return atoms;
+}
+
+function parseBulletSubsection(content: string, heading: string): string[] {
+  const section = extractSubsection(content, heading);
+  if (!section) return [];
+  return section
+    .split('\n')
+    .map(line => line.match(/^-\s+(.+)$/)?.[1]?.trim() || '')
+    .filter(Boolean);
+}
+
+function parseQuoteSubsection(content: string, heading: string): string[] {
+  const section = extractSubsection(content, heading);
+  if (!section) return [];
+  return section
+    .split('\n')
+    .map(line => line.match(/^>\s+(.+)$/)?.[1]?.trim() || '')
+    .filter(Boolean);
+}
+
+function extractSubsection(content: string, heading: string): string {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = content.match(new RegExp(`### ${escaped}\\s*\\n\\n?([\\s\\S]*?)(?=\\n### |\\n## |\\n---\\n|$)`));
+  return match ? match[1].trim() : '';
 }
 
 // Helper: find slug by title (best effort, searches cached items)

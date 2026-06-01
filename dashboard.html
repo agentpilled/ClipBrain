@@ -574,6 +574,28 @@
       font-size: 11px;
     }
 
+    .card-atoms {
+      padding: 0 20px 12px;
+    }
+
+    .card-atom {
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+      margin: 0 0 4px 0;
+    }
+
+    .card-atom::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 7px;
+      transform: translateY(-2px);
+    }
+
     /* Processing indicator */
     .processing-indicator {
       font-size: 11px;
@@ -1079,6 +1101,8 @@
           const connData = state.connectionsCache[item.slug];
           const hasSummary = connData && connData.summary;
           const hasTags = connData && connData.tags && connData.tags.length > 0;
+          const atomClaims = connData && connData.atoms && connData.atoms.claims ? connData.atoms.claims.slice(0, 2) : [];
+          const hasAtoms = atomClaims.length > 0;
           const hasConnections = connData && connData.connections && connData.connections.length > 0;
           const isProcessing = state.processingSlugs.has(item.slug);
 
@@ -1094,6 +1118,14 @@
 
           if (hasTags) {
             extraHTML += '<div class="card-tags">' + connData.tags.map(t => `<span class="card-tag">${escapeHTML(t)}</span>`).join('') + '</div>';
+          }
+
+          if (hasAtoms) {
+            extraHTML += '<div class="card-atoms"><div class="card-connections-title">Claims</div>';
+            for (const claim of atomClaims) {
+              extraHTML += `<div class="card-atom">${escapeHTML(claim)}</div>`;
+            }
+            extraHTML += '</div>';
           }
 
           if (hasConnections) {

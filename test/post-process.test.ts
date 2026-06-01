@@ -19,7 +19,17 @@ describe('parseOpenAIResponse', () => {
         message: {
           content: JSON.stringify({
             summary: 'This article discusses cognitive biases.',
+            importance: 'It sharpens how agents should reason about user decisions.',
             tags: ['psychology', 'decision-making', 'biases'],
+            atoms: {
+              claims: ['Cognitive biases systematically distort judgment.'],
+              quotes: ['What you see is all there is.'],
+              entities: [
+                { name: 'Daniel Kahneman', type: 'person', relevance: 'Author connected to the core concept' },
+              ],
+              questions: ['Where do these biases affect product decisions?'],
+              actions: ['Use this as a checklist when reviewing strategy.'],
+            },
             connections: [
               { title: 'Thinking Fast and Slow', reason: 'Both cover System 1 vs System 2 thinking' },
             ],
@@ -31,7 +41,17 @@ describe('parseOpenAIResponse', () => {
     const result = parseOpenAIResponse(data);
     expect(result).not.toBeNull();
     expect(result!.summary).toBe('This article discusses cognitive biases.');
+    expect(result!.importance).toBe('It sharpens how agents should reason about user decisions.');
     expect(result!.tags).toEqual(['psychology', 'decision-making', 'biases']);
+    expect(result!.atoms!.claims).toEqual(['Cognitive biases systematically distort judgment.']);
+    expect(result!.atoms!.quotes).toEqual(['What you see is all there is.']);
+    expect(result!.atoms!.entities[0]).toEqual({
+      name: 'Daniel Kahneman',
+      type: 'person',
+      relevance: 'Author connected to the core concept',
+    });
+    expect(result!.atoms!.questions).toEqual(['Where do these biases affect product decisions?']);
+    expect(result!.atoms!.actions).toEqual(['Use this as a checklist when reviewing strategy.']);
     expect(result!.connections).toHaveLength(1);
     expect(result!.connections[0].title).toBe('Thinking Fast and Slow');
     expect(result!.connections[0].reason).toBe('Both cover System 1 vs System 2 thinking');
@@ -114,6 +134,64 @@ describe('parseOpenAIResponse', () => {
     expect(result!.connections).toHaveLength(1);
     expect(result!.connections[0].title).toBe('Valid');
   });
+
+  test('defaults missing atoms to empty arrays for legacy responses', () => {
+    const data = {
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: 'Legacy response',
+            tags: ['legacy'],
+            connections: [],
+          }),
+        },
+      }],
+    };
+
+    const result = parseOpenAIResponse(data);
+    expect(result!.atoms).toEqual({
+      claims: [],
+      quotes: [],
+      entities: [],
+      questions: [],
+      actions: [],
+    });
+  });
+
+  test('limits and sanitizes knowledge atoms', () => {
+    const data = {
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: 'Test',
+            tags: ['test'],
+            atoms: {
+              claims: ['Claim 1', 'Claim 1', 'Claim 2', 'Claim 3', 'Claim 4', 'Claim 5', 'Claim 6'],
+              quotes: ['Quote 1', 'Quote 2', 'Quote 3', 'Quote 4'],
+              entities: [
+                { name: 'OpenAI', type: 'company', relevance: 'Model provider' },
+                { name: 'OpenAI', type: 'company', relevance: 'Duplicate' },
+                { name: 'Unknown Type', type: 'organization', relevance: 'Falls back' },
+              ],
+              questions: ['Q1?', 'Q2?', 'Q3?', 'Q4?'],
+              actions: ['A1', 'A2', 'A3', 'A4'],
+            },
+            connections: [],
+          }),
+        },
+      }],
+    };
+
+    const result = parseOpenAIResponse(data);
+    expect(result!.atoms!.claims).toEqual(['Claim 1', 'Claim 2', 'Claim 3', 'Claim 4', 'Claim 5']);
+    expect(result!.atoms!.quotes).toEqual(['Quote 1', 'Quote 2', 'Quote 3']);
+    expect(result!.atoms!.entities).toEqual([
+      { name: 'OpenAI', type: 'company', relevance: 'Model provider' },
+      { name: 'Unknown Type', type: 'other', relevance: 'Falls back' },
+    ]);
+    expect(result!.atoms!.questions).toEqual(['Q1?', 'Q2?', 'Q3?']);
+    expect(result!.atoms!.actions).toEqual(['A1', 'A2', 'A3']);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -138,7 +216,17 @@ describe('enrichMarkdown', () => {
 
   const sampleResult: ProcessResult = {
     summary: 'This article covers important topics about testing.',
+    importance: 'It turns a generic testing article into reusable QA guidance.',
     tags: ['testing', 'software', 'quality'],
+    atoms: {
+      claims: ['Fast feedback loops improve software quality.'],
+      quotes: ['Tests are executable expectations.'],
+      entities: [
+        { name: 'Unit Testing', type: 'concept', relevance: 'Core practice described by the article' },
+      ],
+      questions: ['Which checks should run before every commit?'],
+      actions: ['Add regression tests for changed behavior.'],
+    },
     connections: [
       { slug: '', title: 'Unit Testing Guide', reason: 'Both discuss testing methodologies' },
     ],
@@ -165,6 +253,13 @@ describe('enrichMarkdown', () => {
     expect(enriched).toContain('summary: "This article covers important topics about testing."');
   });
 
+  test('adds importance to frontmatter and body', () => {
+    const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
+    expect(enriched).toContain('importance: "It turns a generic testing article into reusable QA guidance."');
+    expect(enriched).toContain('## Why It Matters');
+    expect(enriched).toContain('It turns a generic testing article into reusable QA guidance.');
+  });
+
   test('adds processed_at timestamp', () => {
     const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
     expect(enriched).toMatch(/^processed_at: \d{4}-\d{2}-\d{2}T/m);
@@ -181,6 +276,21 @@ describe('enrichMarkdown', () => {
     expect(enriched).toContain('## Related');
     expect(enriched).toContain('[[Unit Testing Guide]]');
     expect(enriched).toContain('Both discuss testing methodologies');
+  });
+
+  test('adds knowledge atoms as searchable markdown sections', () => {
+    const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
+    expect(enriched).toContain('## Knowledge Atoms');
+    expect(enriched).toContain('### Claims');
+    expect(enriched).toContain('- Fast feedback loops improve software quality.');
+    expect(enriched).toContain('### Quotes');
+    expect(enriched).toContain('> Tests are executable expectations.');
+    expect(enriched).toContain('### Entities');
+    expect(enriched).toContain('- **Unit Testing** (concept) - Core practice described by the article');
+    expect(enriched).toContain('### Open Questions');
+    expect(enriched).toContain('- Which checks should run before every commit?');
+    expect(enriched).toContain('### Actions');
+    expect(enriched).toContain('- [ ] Add regression tests for changed behavior.');
   });
 
   test('adds connections to frontmatter', () => {
@@ -221,6 +331,30 @@ describe('enrichMarkdown', () => {
     expect(enriched).toContain('## Summary');
     expect(enriched).not.toContain('## Related');
     expect(enriched).not.toContain('connections:');
+  });
+
+  test('replaces prior generated compiler sections when reprocessing', () => {
+    const first = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
+    const nextResult: ProcessResult = {
+      summary: 'Updated summary.',
+      tags: ['updated'],
+      atoms: {
+        claims: ['Updated claim.'],
+        quotes: [],
+        entities: [],
+        questions: [],
+        actions: [],
+      },
+      connections: [],
+    };
+
+    const enriched = enrichMarkdown(first, nextResult, []);
+    expect(enriched).toContain('Updated summary.');
+    expect(enriched).toContain('- Updated claim.');
+    expect(enriched).not.toContain('Fast feedback loops improve software quality.');
+    expect(enriched.match(/## Summary/g)).toHaveLength(1);
+    expect(enriched.match(/## Knowledge Atoms/g)).toHaveLength(1);
+    expect(enriched).toContain('Some article content here.');
   });
 });
 

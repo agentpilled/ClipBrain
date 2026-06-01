@@ -1,10 +1,26 @@
 // ClipBrain — AI post-processing layer
-// After every capture, generates: summary, semantic tags, and connections to existing content.
+// After every capture, compiles source text into searchable knowledge.
 
 export interface ProcessResult {
   summary: string;           // 2-3 sentence summary
+  importance?: string;       // Why this source matters to the user's knowledge base
   tags: string[];            // 3-5 semantic tags (e.g., "startups", "psychology")
+  atoms?: KnowledgeAtoms;    // Structured, searchable knowledge extracted from the source
   connections: Connection[];  // Related content in the knowledge base
+}
+
+export interface KnowledgeAtoms {
+  claims: string[];
+  quotes: string[];
+  entities: KnowledgeEntity[];
+  questions: string[];
+  actions: string[];
+}
+
+export interface KnowledgeEntity {
+  name: string;
+  type: 'person' | 'company' | 'project' | 'book' | 'concept' | 'tool' | 'other';
+  relevance: string;
 }
 
 export interface Connection {
@@ -162,14 +178,33 @@ export async function callOpenAI(content: string, relatedTitles: string[]): Prom
     model,
     messages: [{
       role: 'system',
-      content: 'You are a knowledge librarian. Given content and a list of existing items in the knowledge base, generate: 1) a 2-3 sentence summary, 2) 3-5 semantic tags (single words or short phrases, lowercase), 3) which existing items are genuinely related and why (1 sentence each). Respond in JSON format: { "summary": "...", "tags": ["..."], "connections": [{"title": "...", "reason": "..."}] }'
+      content: [
+        'You are ClipBrain Knowledge Compiler v1.',
+        'Turn captured reading into durable, source-grounded memory for coding and reasoning agents.',
+        'Extract only what is supported by the source. Be concrete, compact, and useful.',
+        'Return strict JSON with this shape:',
+        '{',
+        '  "summary": "2-3 sentence summary",',
+        '  "importance": "why this matters to the user knowledge base, 1 sentence",',
+        '  "tags": ["3-5 lowercase semantic tags"],',
+        '  "atoms": {',
+        '    "claims": ["strong claims or reusable ideas, max 5"],',
+        '    "quotes": ["short memorable exact quotes if present, max 3"],',
+        '    "entities": [{"name": "...", "type": "person|company|project|book|concept|tool|other", "relevance": "why it matters"}],',
+        '    "questions": ["open questions raised by the source, max 3"],',
+        '    "actions": ["specific follow-up actions or applications, max 3"]',
+        '  },',
+        '  "connections": [{"title": "existing item title", "reason": "why it is genuinely related"}]',
+        '}',
+        'If a field has no grounded items, return an empty array or empty string.',
+      ].join('\n')
     }, {
       role: 'user',
-      content: `Content to process:\n${content.slice(0, 2000)}\n\nExisting items in knowledge base:\n${relatedTitles.join('\n')}`
+      content: `Content to process:\n${content.slice(0, 6000)}\n\nExisting items in knowledge base:\n${relatedTitles.join('\n')}`
     }],
     response_format: { type: 'json_object' },
     temperature: 0.3,
-    max_tokens: 500,
+    max_tokens: 1100,
   });
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -212,19 +247,86 @@ export function parseOpenAIResponse(data: any): ProcessResult | null {
     if (!content) return null;
 
     const parsed = JSON.parse(content);
+    const atomsInput = parsed.atoms || parsed.knowledge_atoms || parsed.knowledgeAtoms || {};
 
     return {
-      summary: typeof parsed.summary === 'string' ? parsed.summary : '',
-      tags: Array.isArray(parsed.tags) ? parsed.tags.filter((t: any) => typeof t === 'string').slice(0, 5) : [],
+      summary: cleanString(parsed.summary, 1000),
+      importance: cleanString(parsed.importance || parsed.why_it_matters || parsed.whyItMatters, 500),
+      tags: limitStringArray(parsed.tags, 5, 48),
+      atoms: {
+        claims: limitStringArray(atomsInput.claims || parsed.claims, 5, 280),
+        quotes: limitStringArray(atomsInput.quotes || atomsInput.memorable_quotes || parsed.quotes, 3, 500),
+        entities: limitEntities(atomsInput.entities || parsed.entities, 8),
+        questions: limitStringArray(atomsInput.questions || parsed.questions, 3, 240),
+        actions: limitStringArray(atomsInput.actions || atomsInput.action_items || parsed.actions, 3, 240),
+      },
       connections: Array.isArray(parsed.connections)
         ? parsed.connections
             .filter((c: any) => c && typeof c.title === 'string' && typeof c.reason === 'string')
-            .map((c: any) => ({ slug: '', title: c.title, reason: c.reason }))
+            .slice(0, 5)
+            .map((c: any) => ({ slug: '', title: cleanString(c.title, 120), reason: cleanString(c.reason, 240) }))
+            .filter((c: Connection) => c.title && c.reason)
         : [],
     };
   } catch {
     return null;
   }
+}
+
+function emptyAtoms(): KnowledgeAtoms {
+  return { claims: [], quotes: [], entities: [], questions: [], actions: [] };
+}
+
+function cleanString(value: any, maxLength: number): string {
+  if (typeof value !== 'string') return '';
+  return value.replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function limitStringArray(value: any, limit: number, maxLength: number): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of value) {
+    const cleaned = cleanString(item, maxLength);
+    const key = cleaned.toLowerCase();
+    if (!cleaned || seen.has(key)) continue;
+    seen.add(key);
+    result.push(cleaned);
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+function limitEntities(value: any, limit: number): KnowledgeEntity[] {
+  if (!Array.isArray(value)) return [];
+
+  const allowedTypes = new Set(['person', 'company', 'project', 'book', 'concept', 'tool', 'other']);
+  const seen = new Set<string>();
+  const result: KnowledgeEntity[] = [];
+
+  for (const item of value) {
+    let name = '';
+    let type: KnowledgeEntity['type'] = 'other';
+    let relevance = '';
+
+    if (typeof item === 'string') {
+      name = cleanString(item, 120);
+    } else if (item && typeof item === 'object') {
+      name = cleanString(item.name, 120);
+      const rawType = cleanString(item.type, 40).toLowerCase();
+      type = allowedTypes.has(rawType) ? rawType as KnowledgeEntity['type'] : 'other';
+      relevance = cleanString(item.relevance || item.reason || item.description, 240);
+    }
+
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    result.push({ name, type, relevance });
+    if (result.length >= limit) break;
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -339,6 +441,8 @@ export function enrichMarkdown(
     reason: c.reason,
   })).filter(c => c.slug); // Only keep connections we can link to
 
+  const atoms = result.atoms || emptyAtoms();
+
   // Build enriched frontmatter
   const fmLines: string[] = [
     '---',
@@ -347,6 +451,9 @@ export function enrichMarkdown(
     `tags: [${result.tags.join(', ')}]`,
     `summary: "${result.summary.replace(/"/g, '\\"')}"`,
   ];
+  if (result.importance) {
+    fmLines.push(`importance: "${result.importance.replace(/"/g, '\\"')}"`);
+  }
 
   if (connectionsWithSlugs.length > 0) {
     fmLines.push('connections:');
@@ -372,6 +479,66 @@ export function enrichMarkdown(
   enrichedSections.push('');
   enrichedSections.push(result.summary);
 
+  if (result.importance) {
+    enrichedSections.push('');
+    enrichedSections.push('## Why It Matters');
+    enrichedSections.push('');
+    enrichedSections.push(result.importance);
+  }
+
+  if (hasKnowledgeAtoms(atoms)) {
+    enrichedSections.push('');
+    enrichedSections.push('## Knowledge Atoms');
+
+    if (atoms.claims.length > 0) {
+      enrichedSections.push('');
+      enrichedSections.push('### Claims');
+      enrichedSections.push('');
+      for (const claim of atoms.claims) {
+        enrichedSections.push(`- ${claim}`);
+      }
+    }
+
+    if (atoms.quotes.length > 0) {
+      enrichedSections.push('');
+      enrichedSections.push('### Quotes');
+      enrichedSections.push('');
+      for (const quote of atoms.quotes) {
+        enrichedSections.push(`> ${quote.replace(/^>\s*/, '')}`);
+        enrichedSections.push('');
+      }
+      if (enrichedSections[enrichedSections.length - 1] === '') enrichedSections.pop();
+    }
+
+    if (atoms.entities.length > 0) {
+      enrichedSections.push('');
+      enrichedSections.push('### Entities');
+      enrichedSections.push('');
+      for (const entity of atoms.entities) {
+        const suffix = entity.relevance ? ` - ${entity.relevance}` : '';
+        enrichedSections.push(`- **${entity.name}** (${entity.type})${suffix}`);
+      }
+    }
+
+    if (atoms.questions.length > 0) {
+      enrichedSections.push('');
+      enrichedSections.push('### Open Questions');
+      enrichedSections.push('');
+      for (const question of atoms.questions) {
+        enrichedSections.push(`- ${question}`);
+      }
+    }
+
+    if (atoms.actions.length > 0) {
+      enrichedSections.push('');
+      enrichedSections.push('### Actions');
+      enrichedSections.push('');
+      for (const action of atoms.actions) {
+        enrichedSections.push(`- [ ] ${action}`);
+      }
+    }
+  }
+
   if (connectionsWithSlugs.length > 0) {
     enrichedSections.push('');
     enrichedSections.push('## Related');
@@ -384,14 +551,23 @@ export function enrichMarkdown(
   enrichedSections.push('');
   enrichedSections.push('---');
 
-  // Strip existing Summary/Related sections if re-processing
+  // Strip existing generated sections if re-processing.
   let cleanBody = body;
-  cleanBody = cleanBody.replace(/\n## Summary\n[\s\S]*?(?=\n---\n|$)/, '');
-  cleanBody = cleanBody.replace(/^\n## Summary\n[\s\S]*?(?=\n---\n|$)/, '');
+  if (frontmatter.processed_at) {
+    cleanBody = cleanBody.replace(/^\s*## Summary\s*\n[\s\S]*?\n---\s*\n?/, '\n');
+  }
   // Clean up leading whitespace
   cleanBody = cleanBody.replace(/^\n+/, '\n');
 
   return fmLines.join('\n') + enrichedSections.join('\n') + cleanBody + '\n';
+}
+
+function hasKnowledgeAtoms(atoms: KnowledgeAtoms): boolean {
+  return atoms.claims.length > 0 ||
+    atoms.quotes.length > 0 ||
+    atoms.entities.length > 0 ||
+    atoms.questions.length > 0 ||
+    atoms.actions.length > 0;
 }
 
 // ---------------------------------------------------------------------------

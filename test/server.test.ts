@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { canonicalizeUrl, slugFromUrl, buildMarkdown, detectCaptureType, formatDigestMarkdown, isAllowedOrigin, isAuthorizedRequest } from '../server.ts';
+import { canonicalizeUrl, slugFromUrl, buildMarkdown, detectCaptureType, formatDigestMarkdown, isAllowedOrigin, isAuthorizedRequest, parseKnowledgeAtoms } from '../server.ts';
 import type { CaptureLogEntry } from '../server.ts';
 
 // ---------------------------------------------------------------------------
@@ -198,6 +198,62 @@ describe('isAuthorizedRequest', () => {
   test('rejects missing or invalid write credentials', () => {
     expect(isAuthorizedRequest('POST', new Headers(), 'secret')).toBe(false);
     expect(isAuthorizedRequest('POST', new Headers({ Authorization: 'Bearer wrong' }), 'secret')).toBe(false);
+  });
+});
+
+describe('parseKnowledgeAtoms', () => {
+  test('extracts compiler atoms from markdown sections', () => {
+    const markdown = [
+      '## Summary',
+      '',
+      'A summary.',
+      '',
+      '## Knowledge Atoms',
+      '',
+      '### Claims',
+      '',
+      '- Memory becomes useful when it is structured.',
+      '',
+      '### Quotes',
+      '',
+      '> Capture is not knowledge.',
+      '',
+      '### Entities',
+      '',
+      '- **gbrain** (tool) - Stores and queries the compiled memory',
+      '',
+      '### Open Questions',
+      '',
+      '- Which clips should become concept pages?',
+      '',
+      '### Actions',
+      '',
+      '- [ ] Build context packs for agents.',
+      '',
+      '## Related',
+      '',
+      '- [[Karpathy Knowledge Bases]] - Related',
+    ].join('\n');
+
+    expect(parseKnowledgeAtoms(markdown)).toEqual({
+      claims: ['Memory becomes useful when it is structured.'],
+      quotes: ['Capture is not knowledge.'],
+      entities: [
+        { name: 'gbrain', type: 'tool', relevance: 'Stores and queries the compiled memory' },
+      ],
+      questions: ['Which clips should become concept pages?'],
+      actions: ['Build context packs for agents.'],
+    });
+  });
+
+  test('returns empty atom lists when no compiler section exists', () => {
+    expect(parseKnowledgeAtoms('## Summary\n\nNo atoms.')).toEqual({
+      claims: [],
+      quotes: [],
+      entities: [],
+      questions: [],
+      actions: [],
+    });
   });
 });
 
