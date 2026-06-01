@@ -26,6 +26,11 @@ export type CleanupPlan = {
 
 export type MarkdownBySlug = Record<string, string>;
 
+type DuplicateSourceGroup = {
+  sourceUrl: string;
+  slugs: string[];
+};
+
 export function buildCleanupPlan(items: CorpusItem[], markdownBySlug: MarkdownBySlug): CleanupPlan {
   const recommendations: CleanupRecommendation[] = [];
   const deleteSlugs = new Set<string>();
@@ -85,6 +90,7 @@ export function buildCleanupPlan(items: CorpusItem[], markdownBySlug: MarkdownBy
   }
 
   const report = buildCorpusReport(items);
+  const duplicateGroupKeys = new Set<string>();
   for (const group of report.duplicateGroups) {
     if (group.slugs.every(slug => deleteSlugs.has(slug))) continue;
     if (group.slugs.some(slug => reviewMergeSlugs.has(slug))) continue;
@@ -92,23 +98,36 @@ export function buildCleanupPlan(items: CorpusItem[], markdownBySlug: MarkdownBy
     const activeSlugs = group.slugs.filter(slug => !deleteSlugs.has(slug));
     if (activeSlugs.length < 2) continue;
 
-    const keepSlug = chooseDuplicateKeepSlug(activeSlugs, itemsBySlug);
-    const redundantSlugs = activeSlugs.filter(slug => slug !== keepSlug);
     const sameSourceUrl = hasSingleSourceUrl(activeSlugs, markdownBySlug);
-    const confidence: CleanupConfidence = sameSourceUrl ? 'medium' : 'low';
-
-    recommendations.push({
-      action: 'merge_duplicate',
-      confidence,
-      slugs: activeSlugs,
-      keepSlug,
-      deleteSlugs: redundantSlugs,
-      reason: sameSourceUrl
+    duplicateGroupKeys.add(canonicalSlugGroupKey(activeSlugs));
+    addMergeDuplicateRecommendation(
+      recommendations,
+      activeSlugs,
+      itemsBySlug,
+      duplicateDeleteSlugs,
+      sameSourceUrl ? 'medium' : 'low',
+      sameSourceUrl
         ? 'Duplicate title group with the same source URL; keep the richest/descriptive slug, verify no unique text, then remove redundant copy.'
         : 'Duplicate title group; inspect content before choosing a canonical item.',
-    });
+    );
+  }
 
-    for (const slug of redundantSlugs) duplicateDeleteSlugs.add(slug);
+  for (const group of findDuplicateSourceUrlGroups(items, markdownBySlug)) {
+    if (group.slugs.every(slug => deleteSlugs.has(slug))) continue;
+    if (group.slugs.some(slug => reviewMergeSlugs.has(slug))) continue;
+
+    const activeSlugs = group.slugs.filter(slug => !deleteSlugs.has(slug));
+    if (activeSlugs.length < 2) continue;
+    if (duplicateGroupKeys.has(canonicalSlugGroupKey(activeSlugs))) continue;
+
+    addMergeDuplicateRecommendation(
+      recommendations,
+      activeSlugs,
+      itemsBySlug,
+      duplicateDeleteSlugs,
+      'medium',
+      'Duplicate source URL; keep the richest/descriptive slug, verify no unique text, then remove redundant copy.',
+    );
   }
 
   for (const item of items) {
@@ -133,6 +152,29 @@ export function buildCleanupPlan(items: CorpusItem[], markdownBySlug: MarkdownBy
     scanned: items.length,
     recommendations,
   };
+}
+
+function addMergeDuplicateRecommendation(
+  recommendations: CleanupRecommendation[],
+  activeSlugs: string[],
+  itemsBySlug: Map<string, CorpusItem>,
+  duplicateDeleteSlugs: Set<string>,
+  confidence: CleanupConfidence,
+  reason: string
+): void {
+  const keepSlug = chooseDuplicateKeepSlug(activeSlugs, itemsBySlug);
+  const redundantSlugs = activeSlugs.filter(slug => slug !== keepSlug);
+
+  recommendations.push({
+    action: 'merge_duplicate',
+    confidence,
+    slugs: activeSlugs,
+    keepSlug,
+    deleteSlugs: redundantSlugs,
+    reason,
+  });
+
+  for (const slug of redundantSlugs) duplicateDeleteSlugs.add(slug);
 }
 
 export function formatCleanupPlan(plan: CleanupPlan): string {
@@ -253,11 +295,35 @@ function duplicateScore(slug: string, itemsBySlug: Map<string, CorpusItem>): num
 function hasSingleSourceUrl(slugs: string[], markdownBySlug: MarkdownBySlug): boolean {
   const urls = new Set<string>();
   for (const slug of slugs) {
-    const { frontmatter } = parseFrontmatter(markdownBySlug[slug] || '');
-    const sourceUrl = typeof frontmatter.source_url === 'string' ? frontmatter.source_url.trim() : '';
+    const sourceUrl = getSourceUrl(markdownBySlug[slug] || '');
     if (sourceUrl) urls.add(sourceUrl);
   }
   return urls.size === 1;
+}
+
+function findDuplicateSourceUrlGroups(items: CorpusItem[], markdownBySlug: MarkdownBySlug): DuplicateSourceGroup[] {
+  const groups = new Map<string, string[]>();
+
+  for (const item of items) {
+    const sourceUrl = getSourceUrl(markdownBySlug[item.slug] || '');
+    if (!sourceUrl) continue;
+    const group = groups.get(sourceUrl) || [];
+    group.push(item.slug);
+    groups.set(sourceUrl, group);
+  }
+
+  return [...groups.entries()]
+    .filter(([, slugs]) => slugs.length > 1)
+    .map(([sourceUrl, slugs]) => ({ sourceUrl, slugs }));
+}
+
+function getSourceUrl(markdown: string): string {
+  const { frontmatter } = parseFrontmatter(markdown);
+  return typeof frontmatter.source_url === 'string' ? frontmatter.source_url.trim() : '';
+}
+
+function canonicalSlugGroupKey(slugs: string[]): string {
+  return [...slugs].sort().join('\n');
 }
 
 function titleForItem(item: CorpusItem, markdown: string): string {

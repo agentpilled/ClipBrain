@@ -96,6 +96,32 @@ describe('cleanup plan helpers', () => {
     }));
   });
 
+  test('proposes duplicate merge for matching source URLs even when titles differ', () => {
+    const items = [
+      item('web/garry-tan-on-x', 'Garry Tan on X'),
+      item(
+        'web/garry-tan-on-x-resolvers-the-routing-table-for-intelligence-x',
+        'Resolvers: The Routing Table for Intelligence',
+      ),
+    ];
+
+    const plan = buildCleanupPlan(items, {
+      'web/garry-tan-on-x': markdown('Garry Tan on X: \\', 'Same article body', 'https://x.com/garrytan/status/1'),
+      'web/garry-tan-on-x-resolvers-the-routing-table-for-intelligence-x': markdown(
+        'Resolvers: The Routing Table for Intelligence',
+        'Same article body',
+        'https://x.com/garrytan/status/1',
+      ),
+    });
+
+    expect(plan.recommendations).toContainEqual(expect.objectContaining({
+      action: 'merge_duplicate',
+      confidence: 'medium',
+      keepSlug: 'web/garry-tan-on-x-resolvers-the-routing-table-for-intelligence-x',
+      deleteSlugs: ['web/garry-tan-on-x'],
+    }));
+  });
+
   test('formats a read-only plan summary', () => {
     const plan = buildCleanupPlan([
       item('web/test-article', 'Test Article', ['test-capture']),
