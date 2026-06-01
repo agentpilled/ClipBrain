@@ -13,6 +13,7 @@ installed `gbrain` CLI and optionally syncs markdown to Obsidian.
 Important files:
 
 - `server.ts`: local HTTP API, dashboard routes, capture handling, diagnostics
+- `clipbrain-mcp.ts`: ClipBrain-specific MCP tools that call the local server
 - `service-worker.js`: MV3 background worker, capture dispatch, offline queue
 - `content-script.js`, `kindle-content-script.js`, `gmail-content-script.js`: page extractors
 - `post-process.ts`: optional OpenAI enrichment after a capture is saved
@@ -26,6 +27,9 @@ Important files:
   for setup scripts.
 - The server binds to `127.0.0.1:19285` by default. It can be overridden with
   `--host`, `--port`, `GBRAIN_CAPTURE_HOST`, and `GBRAIN_CAPTURE_PORT`.
+- MCP setup registers both `gbrain` (`gbrain serve`) and `clipbrain`
+  (`bun clipbrain-mcp.ts`). Keep `gbrain` for broad brain tools; use
+  `clipbrain` for ClipBrain-specific agent handoffs such as `context_pack`.
 - Do not reintroduce a vendored `gbrain` dependency or local `./bin/gbrain`
   build path. The app should use `GBRAIN_BIN` when set, then `gbrain` from
   `PATH`.

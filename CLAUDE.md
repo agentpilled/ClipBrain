@@ -33,8 +33,18 @@ A standalone Bun HTTP server that:
 - Returns 202 immediately (fire-and-forget)
 - Handles CORS for chrome-extension:// origins
 - Appends every capture to `.captures.jsonl` (append-only, gitignored) and exposes `GET /api/digest?since=ISO|days=N` — returns captures since a date grouped by type (kindle/web/youtube/email/pdf) plus a Slack-friendly markdown summary. Kindle entries include `newHighlights` (delta vs previous capture).
+- Exposes `GET /api/context-pack?q=...&limit=...` — returns structured sources plus agent-ready markdown with `[S#]` citations, retrieval snippets, summaries, claims, quotes, entities, open questions, and actions.
 
 The server resolves the gbrain binary in this order: `GBRAIN_BIN` env var, then `gbrain` on `PATH`.
+
+### MCP Bridge (clipbrain-mcp.ts)
+
+ClipBrain registers a small MCP server alongside `gbrain serve`:
+
+- `gbrain` MCP keeps the broad knowledge-engine tools (`query`, `search`, `get_page`, graph tools, etc.)
+- `clipbrain` MCP exposes `context_pack`, which calls the local HTTP server and returns the same cited handoff used by `/api/context-pack`
+
+The ClipBrain MCP server is local-only by default and reads `CLIPBRAIN_SERVER_URL` from the host environment, falling back to `http://127.0.0.1:19285`.
 
 ### Post-Processing (post-process.ts)
 
@@ -42,7 +52,8 @@ After each capture, if `OPENAI_API_KEY` is set, the server runs AI post-processi
 - Generates a 2-3 sentence summary
 - Creates 3-5 semantic tags
 - Finds connections to existing content in the knowledge base
-- Enriches the markdown with `## Summary` and `## Related` sections
+- Extracts knowledge atoms: claims, quotes, entities, open questions, and actions
+- Enriches the markdown with `## Summary`, `## Why It Matters`, `## Knowledge Atoms`, and `## Related` sections
 - Re-syncs to Obsidian with wikilinks
 
 Post-processing is fire-and-forget: failures never affect the capture flow. If `OPENAI_API_KEY` is not set, everything works without it.

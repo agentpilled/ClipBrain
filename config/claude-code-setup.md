@@ -1,6 +1,6 @@
 # Connecting ClipBrain with your AI
 
-ClipBrain exposes your captured knowledge via MCP (Model Context Protocol). Any AI tool that supports MCP can search what you've saved.
+ClipBrain exposes your captured knowledge via MCP (Model Context Protocol). Any AI tool that supports MCP can search what you've saved and request compact cited context packs.
 
 ---
 
@@ -14,12 +14,19 @@ Add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings
     "gbrain": {
       "command": "gbrain",
       "args": ["serve"]
+    },
+    "clipbrain": {
+      "command": "bun",
+      "args": ["/path/to/clipbrain/clipbrain-mcp.ts"],
+      "env": {
+        "CLIPBRAIN_SERVER_URL": "http://127.0.0.1:19285"
+      }
     }
   }
 }
 ```
 
-Replace `/path/to/gbrain-capture` with where you cloned the repo.
+Replace `/path/to/clipbrain` with where you cloned the repo. `gbrain` keeps the full knowledge engine tools; `clipbrain` adds the `context_pack` handoff tool.
 
 Restart Claude Code. You should see ClipBrain tools in your tool list.
 
@@ -27,9 +34,26 @@ Restart Claude Code. You should see ClipBrain tools in your tool list.
 
 ## OpenClaw
 
-OpenClaw supports MCP via its plugin system. Two options:
+OpenClaw supports MCP via direct MCP config or its plugin system. Direct config is recommended because the ClipBrain MCP server needs the local repo path.
 
-### Option A: Plugin manifest (recommended)
+### Option A: Direct MCP config (recommended)
+
+If your OpenClaw version supports `mcpServers` in config, add:
+
+```json
+{
+  "mcpServers": {
+    "gbrain": { "command": "gbrain", "args": ["serve"] },
+    "clipbrain": {
+      "command": "bun",
+      "args": ["/path/to/clipbrain/clipbrain-mcp.ts"],
+      "env": { "CLIPBRAIN_SERVER_URL": "http://127.0.0.1:19285" }
+    }
+  }
+}
+```
+
+### Option B: Plugin manifest
 
 Copy the plugin manifest into your OpenClaw extensions:
 
@@ -51,17 +75,7 @@ Then add to your `openclaw.json` plugins section:
 }
 ```
 
-### Option B: Direct MCP config
-
-If your OpenClaw version supports `mcpServers` in config, add:
-
-```json
-{
-  "mcpServers": {
-    "gbrain": { "command": "gbrain", "args": ["serve"] }
-  }
-}
-```
+The static plugin manifest keeps the broad `gbrain` tools portable. To expose `context_pack`, also add the `clipbrain` MCP server from Option A.
 
 ---
 
@@ -72,7 +86,12 @@ Open Settings > Developer > Edit Config. Add to `mcpServers`:
 ```json
 {
   "mcpServers": {
-    "gbrain": { "command": "gbrain", "args": ["serve"] }
+    "gbrain": { "command": "gbrain", "args": ["serve"] },
+    "clipbrain": {
+      "command": "bun",
+      "args": ["/path/to/clipbrain/clipbrain-mcp.ts"],
+      "env": { "CLIPBRAIN_SERVER_URL": "http://127.0.0.1:19285" }
+    }
   }
 }
 ```
@@ -87,18 +106,21 @@ Open Settings > MCP. Add a new server:
 
 - Name: `gbrain`
 - Command: `gbrain serve`
+- Name: `clipbrain`
+- Command: `bun /path/to/clipbrain/clipbrain-mcp.ts`
 
 ---
 
 ## Any MCP client
 
-The MCP server command is:
+The MCP server commands are:
 
 ```
 gbrain serve
+bun /path/to/clipbrain/clipbrain-mcp.ts
 ```
 
-It communicates via stdio. Connect it like any other MCP server.
+They communicate via stdio. Connect them like any other MCP servers.
 
 ---
 
@@ -112,6 +134,7 @@ You have access to the user's personal knowledge base via the ClipBrain MCP tool
 Key tools:
 - `query` — Hybrid semantic + keyword search across saved articles, notes, and highlights
 - `search` — Keyword-only search (faster, works even when embeddings are missing)
+- `context_pack` — Compact, cited handoff for agents with `[S#]` sources, snippets, summaries, claims, quotes, entities, questions, and actions
 
 Use these tools when:
 - The user asks about a topic they may have read about before

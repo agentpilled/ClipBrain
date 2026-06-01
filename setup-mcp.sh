@@ -9,6 +9,7 @@ if ! command -v bun &>/dev/null; then
   echo "Error: bun is not installed. Install it from https://bun.sh"
   exit 1
 fi
+BUN_PATH="$(command -v bun)"
 
 if ! command -v gbrain &>/dev/null; then
   echo "gbrain CLI not found; installing it now..."
@@ -24,11 +25,15 @@ fi
 GBRAIN_PATH="$(command -v gbrain)"
 MCP_COMMAND="$GBRAIN_PATH"
 MCP_ARGS_JSON="[\"serve\"]"
+CLIPBRAIN_MCP_COMMAND="$BUN_PATH"
+CLIPBRAIN_MCP_ARGS_JSON="[\"$SCRIPT_DIR/clipbrain-mcp.ts\"]"
+CLIPBRAIN_MCP_BASE_URL="${CLIPBRAIN_SERVER_URL:-http://127.0.0.1:19285}"
 
 echo "ClipBrain MCP Setup"
 echo "==================="
 echo ""
-echo "MCP command: $MCP_COMMAND $MCP_ARGS_JSON"
+echo "GBrain MCP command: $MCP_COMMAND $MCP_ARGS_JSON"
+echo "ClipBrain MCP command: $CLIPBRAIN_MCP_COMMAND $CLIPBRAIN_MCP_ARGS_JSON"
 echo ""
 
 # ─── Ask which tool to configure ──────────────────────────────────────────────
@@ -51,7 +56,7 @@ case "$CHOICE" in
 esac
 
 # ─── JSON merge helper ────────────────────────────────────────────────────────
-# Merges the gbrain mcpServers entry into a JSON settings file.
+# Merges the gbrain and clipbrain mcpServers entries into a JSON settings file.
 # Usage: merge_mcp_json <file>
 merge_mcp_json() {
   local FILE="$1"
@@ -64,6 +69,13 @@ merge_mcp_json() {
     "gbrain": {
       "command": "$MCP_COMMAND",
       "args": $MCP_ARGS_JSON
+    },
+    "clipbrain": {
+      "command": "$CLIPBRAIN_MCP_COMMAND",
+      "args": $CLIPBRAIN_MCP_ARGS_JSON,
+      "env": {
+        "CLIPBRAIN_SERVER_URL": "$CLIPBRAIN_MCP_BASE_URL"
+      }
     }
   }
 }
@@ -78,25 +90,44 @@ JSONEOF
     # Use jq for reliable JSON merging
     local TMP
     TMP=$(mktemp)
-    jq --arg command "$MCP_COMMAND" --argjson args "$MCP_ARGS_JSON" '
+    jq \
+      --arg gbrain_command "$MCP_COMMAND" \
+      --argjson gbrain_args "$MCP_ARGS_JSON" \
+      --arg clipbrain_command "$CLIPBRAIN_MCP_COMMAND" \
+      --argjson clipbrain_args "$CLIPBRAIN_MCP_ARGS_JSON" \
+      --arg clipbrain_base_url "$CLIPBRAIN_MCP_BASE_URL" '
       .mcpServers = (.mcpServers // {}) |
       .mcpServers.gbrain = {
-        "command": $command,
-        "args": $args
+        "command": $gbrain_command,
+        "args": $gbrain_args
+      } |
+      .mcpServers.clipbrain = {
+        "command": $clipbrain_command,
+        "args": $clipbrain_args,
+        "env": {
+          "CLIPBRAIN_SERVER_URL": $clipbrain_base_url
+        }
       }
     ' "$FILE" > "$TMP" && mv "$TMP" "$FILE"
   elif command -v python3 &>/dev/null; then
     # Fallback to python3
-    python3 - "$FILE" "$MCP_COMMAND" "$MCP_ARGS_JSON" <<'PYEOF'
+    python3 - "$FILE" "$MCP_COMMAND" "$MCP_ARGS_JSON" "$CLIPBRAIN_MCP_COMMAND" "$CLIPBRAIN_MCP_ARGS_JSON" "$CLIPBRAIN_MCP_BASE_URL" <<'PYEOF'
 import json, sys
-filepath, command, args_json = sys.argv[1], sys.argv[2], sys.argv[3]
+filepath, gbrain_command, gbrain_args_json, clipbrain_command, clipbrain_args_json, clipbrain_base_url = sys.argv[1:7]
 with open(filepath, 'r') as f:
     data = json.load(f)
 if 'mcpServers' not in data:
     data['mcpServers'] = {}
 data['mcpServers']['gbrain'] = {
-    "command": command,
-    "args": json.loads(args_json)
+    "command": gbrain_command,
+    "args": json.loads(gbrain_args_json)
+}
+data['mcpServers']['clipbrain'] = {
+    "command": clipbrain_command,
+    "args": json.loads(clipbrain_args_json),
+    "env": {
+        "CLIPBRAIN_SERVER_URL": clipbrain_base_url
+    }
 }
 with open(filepath, 'w') as f:
     json.dump(data, f, indent=2)
@@ -109,6 +140,11 @@ PYEOF
     echo "  \"gbrain\": {"
     echo "    \"command\": \"$MCP_COMMAND\","
     echo "    \"args\": $MCP_ARGS_JSON"
+    echo "  },"
+    echo "  \"clipbrain\": {"
+    echo "    \"command\": \"$CLIPBRAIN_MCP_COMMAND\","
+    echo "    \"args\": $CLIPBRAIN_MCP_ARGS_JSON,"
+    echo "    \"env\": { \"CLIPBRAIN_SERVER_URL\": \"$CLIPBRAIN_MCP_BASE_URL\" }"
     echo "  }"
     echo ""
     return 1
@@ -186,10 +222,19 @@ You have access to the user's personal knowledge base via ClipBrain MCP tools.
 Key tools:
 - `query` — Hybrid semantic + keyword search across saved articles, notes, and Kindle highlights
 - `search` — Keyword-only search (faster, works when embeddings are missing)
+- `context_pack` — Compact, cited handoff for agents with `[S#]` sources, snippets, summaries, claims, quotes, entities, questions, and actions
 
 Use these when the user asks about something they may have read, references "that article" or "that book", or when you want to ground your response in their prior reading.
 MDEOF
   echo "System prompt added to $CLAUDE_MD"
+  CLAUDE_MD_DONE=true
+elif ! grep -q "context_pack" "$CLAUDE_MD" 2>/dev/null; then
+  cat >> "$CLAUDE_MD" <<'MDEOF'
+
+Additional ClipBrain MCP tool:
+- `context_pack` — Compact, cited handoff for agents with `[S#]` sources, snippets, summaries, claims, quotes, entities, questions, and actions
+MDEOF
+  echo "System prompt updated in $CLAUDE_MD"
   CLAUDE_MD_DONE=true
 else
   echo "System prompt already present in $CLAUDE_MD"

@@ -6,11 +6,13 @@
   "scripts": {
     "vendor": "cp node_modules/@mozilla/readability/Readability.js lib/readability.js",
     "setup": "./setup.sh",
+    "mcp": "bun run clipbrain-mcp.ts",
     "serve": "bun run server.ts",
     "serve:bg": "bun run server.ts &",
     "test": "bun test"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@mozilla/readability": "^0.6.0",
     "pdf-parse": "^2.4.5"
   }
