@@ -26,6 +26,11 @@ Every capture gets post-processed: a 2-3 sentence summary, semantic tags, and au
 
 ![Dashboard showing AI-generated summaries, tags like "ambition", "startups", "innovation", and connections between captures](screenshots/dashboard-ai.png)
 
+Long sources are handled automatically. If the local embedding model cannot
+index a full enriched page in one pass, ClipBrain keeps the main capture as a
+compact summary/atom page and stores the raw source in searchable
+`clipbrain-source/...` chunk pages.
+
 ## Get started
 
 You need [Bun](https://bun.sh) and Chrome.
@@ -153,7 +158,9 @@ If you use Obsidian, ClipBrain auto-syncs captures as markdown to your vault. Ea
                    +------------------------------+
 ```
 
-Everything runs locally. No data leaves your machine except for generating embeddings (OpenAI API).
+Everything runs locally. If `OPENAI_API_KEY` is enabled, captured text is sent
+to OpenAI for optional summaries and knowledge atoms. Embeddings use your
+configured `gbrain` provider.
 
 ## Requirements
 

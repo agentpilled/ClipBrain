@@ -1,14 +1,18 @@
 import { describe, test, expect } from 'bun:test';
 import {
   parseOpenAIResponse,
+  buildSourceChunkPages,
+  cleanSourceBody,
   enrichMarkdown,
   generateWikilinks,
   getBackfillReason,
   getKnowledgeCompilerVersion,
+  isEmbeddingContextLimitError,
   isAlreadyProcessed,
   isCurrentKnowledgeCompiler,
   KNOWLEDGE_COMPILER_VERSION,
   parseFrontmatter,
+  splitSourceBodyForStorage,
   wrapLongMarkdownLines,
 } from '../post-process.ts';
 import type { ProcessResult, Connection } from '../post-process.ts';
@@ -218,6 +222,53 @@ describe('wrapLongMarkdownLines', () => {
   });
 });
 
+describe('source chunk storage helpers', () => {
+  test('detects embedding context limit failures', () => {
+    const err = new Error('gbrain put failed: [embed(ollama:nomic-embed-text)] the input length exceeds the context length');
+    expect(isEmbeddingContextLimitError(err)).toBe(true);
+    expect(isEmbeddingContextLimitError(new Error('network unavailable'))).toBe(false);
+  });
+
+  test('splits source body into bounded storage chunks', () => {
+    const source = Array.from({ length: 12 }, (_, i) =>
+      `Paragraph ${i} ${Array.from({ length: 20 }, (_, j) => `word${i}-${j}`).join(' ')}`
+    ).join('\n\n');
+
+    const chunks = splitSourceBodyForStorage(source, 220);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every(chunk => chunk.length <= 220)).toBe(true);
+    expect(chunks.join(' ').replace(/\s+/g, ' ')).toContain('Paragraph 0');
+    expect(chunks.join(' ').replace(/\s+/g, ' ')).toContain('Paragraph 11');
+  });
+
+  test('builds source chunk pages with parent metadata', () => {
+    const markdown = [
+      '---',
+      'title: "Long Article"',
+      'type: reference',
+      'source_url: https://example.com/long',
+      'captured_at: 2026-04-14T12:00:00.000Z',
+      '---',
+      '',
+      'A long source body.',
+    ].join('\n');
+
+    const pages = buildSourceChunkPages({
+      slug: 'web/example-com/long',
+      markdown,
+      sourceBody: Array.from({ length: 6 }, (_, i) => `Part ${i} ${'word '.repeat(60)}`).join('\n\n'),
+      maxChars: 220,
+      processedAt: '2026-04-14T12:00:00.000Z',
+    });
+
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages[0].slug).toBe('clipbrain-source/web/example-com/long/chunk-001');
+    expect(pages[0].markdown).toContain('parent_slug: "web/example-com/long"');
+    expect(pages[0].markdown).toContain('source_url: https://example.com/long');
+    expect(pages.every(page => page.content.length <= 220)).toBe(true);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // enrichMarkdown
 // ---------------------------------------------------------------------------
@@ -384,6 +435,37 @@ describe('enrichMarkdown', () => {
     expect(enriched.match(/## Summary/g)).toHaveLength(1);
     expect(enriched.match(/## Knowledge Atoms/g)).toHaveLength(1);
     expect(enriched).toContain('Some article content here.');
+  });
+
+  test('can omit raw source and link to source chunks', () => {
+    const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent, {
+      sourceStorage: {
+        mode: 'chunked',
+        chunks: [{
+          slug: 'clipbrain-source/web/example-com/test/chunk-001',
+          title: 'Test Article source chunk 1/1',
+          index: 1,
+          total: 1,
+          charCount: 42,
+        }],
+      },
+    });
+
+    expect(enriched).toContain('source_storage: chunked');
+    expect(enriched).toContain('source_chunk_count: 1');
+    expect(enriched).toContain('## Source Chunks');
+    expect(enriched).toContain('[[Test Article source chunk 1/1]]');
+    expect(enriched).not.toContain('Some article content here.');
+    expect(enriched).not.toContain('> A highlight from the article');
+  });
+
+  test('extracts original source body from already processed markdown', () => {
+    const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
+    const source = cleanSourceBody(enriched);
+
+    expect(source).toContain('Some article content here.');
+    expect(source).toContain('> A highlight from the article');
+    expect(source).not.toContain('## Knowledge Atoms');
   });
 });
 

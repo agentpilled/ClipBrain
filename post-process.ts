@@ -30,6 +30,27 @@ export interface Connection {
 }
 
 export const KNOWLEDGE_COMPILER_VERSION = 'clipbrain-kc-v1';
+const DEFAULT_SOURCE_CHUNK_MAX_CHARS = 1400;
+
+export type SourceChunkRef = {
+  slug: string;
+  title: string;
+  index: number;
+  total: number;
+  charCount: number;
+};
+
+export type SourceChunkPage = SourceChunkRef & {
+  markdown: string;
+  content: string;
+};
+
+export type EnrichMarkdownOptions = {
+  sourceStorage?: {
+    mode: 'full' | 'chunked';
+    chunks: SourceChunkRef[];
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Config
@@ -457,7 +478,8 @@ function cleanFrontmatterValue(value: string): string {
 export function enrichMarkdown(
   originalMarkdown: string,
   result: ProcessResult,
-  relatedContent: Array<{ slug: string; title: string }>
+  relatedContent: Array<{ slug: string; title: string }>,
+  options: EnrichMarkdownOptions = {},
 ): string {
   const { frontmatter, body } = parseFrontmatter(originalMarkdown);
 
@@ -500,6 +522,10 @@ export function enrichMarkdown(
   if (frontmatter.source) fmLines.push(`source: ${frontmatter.source}`);
   if (frontmatter.captured_at) fmLines.push(`captured_at: ${frontmatter.captured_at}`);
   if (frontmatter.pages) fmLines.push(`pages: ${frontmatter.pages}`);
+  if (options.sourceStorage?.mode === 'chunked') {
+    fmLines.push('source_storage: chunked');
+    fmLines.push(`source_chunk_count: ${options.sourceStorage.chunks.length}`);
+  }
   fmLines.push(`compiler_version: ${KNOWLEDGE_COMPILER_VERSION}`);
   fmLines.push(`processed_at: ${new Date().toISOString()}`);
   fmLines.push('---');
@@ -581,19 +607,39 @@ export function enrichMarkdown(
     }
   }
 
+  if (options.sourceStorage?.mode === 'chunked') {
+    enrichedSections.push('');
+    enrichedSections.push('## Source Chunks');
+    enrichedSections.push('');
+    for (const chunk of options.sourceStorage.chunks) {
+      enrichedSections.push(`- [[${chunk.title}]] (${chunk.index}/${chunk.total})`);
+    }
+  }
+
   enrichedSections.push('');
   enrichedSections.push('---');
 
   // Strip existing generated sections if re-processing.
+  const cleanBody = cleanSourceBodyFromParsed(frontmatter, body);
+
+  if (options.sourceStorage?.mode === 'chunked') {
+    return fmLines.join('\n') + enrichedSections.join('\n') + '\n';
+  }
+  return fmLines.join('\n') + enrichedSections.join('\n') + cleanBody + '\n';
+}
+
+export function cleanSourceBody(markdown: string): string {
+  const { frontmatter, body } = parseFrontmatter(markdown);
+  return cleanSourceBodyFromParsed(frontmatter, body);
+}
+
+function cleanSourceBodyFromParsed(frontmatter: Record<string, any>, body: string): string {
   let cleanBody = body;
   if (frontmatter.processed_at) {
     cleanBody = cleanBody.replace(/^\s*## Summary\s*\n[\s\S]*?\n---\s*\n?/, '\n');
   }
-  // Clean up leading whitespace
   cleanBody = cleanBody.replace(/^\n+/, '\n');
-  cleanBody = wrapLongMarkdownLines(cleanBody);
-
-  return fmLines.join('\n') + enrichedSections.join('\n') + cleanBody + '\n';
+  return wrapLongMarkdownLines(cleanBody);
 }
 
 export function wrapLongMarkdownLines(markdown: string, maxLineLength = 1200): string {
@@ -623,6 +669,143 @@ function wrapLongMarkdownLine(line: string, maxLineLength: number): string[] {
 
   if (current.length > quotePrefix.length || lines.length === 0) lines.push(current);
   return lines;
+}
+
+export function isEmbeddingContextLimitError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /input length exceeds the context length|maximum context|context length exceeded|too many tokens|token limit exceeded|maximum request size.*tokens/i
+    .test(message);
+}
+
+export function splitSourceBodyForStorage(sourceBody: string, maxChars = DEFAULT_SOURCE_CHUNK_MAX_CHARS): string[] {
+  const limit = Number.isFinite(maxChars) && maxChars > 200 ? Math.trunc(maxChars) : DEFAULT_SOURCE_CHUNK_MAX_CHARS;
+  const normalized = wrapLongMarkdownLines(sourceBody, Math.min(1000, limit)).trim();
+  if (!normalized) return [];
+
+  const paragraphs = normalized.split(/\n{2,}/).map(part => part.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let current = '';
+
+  const pushCurrent = () => {
+    if (!current.trim()) return;
+    chunks.push(current.trim());
+    current = '';
+  };
+
+  for (const paragraph of paragraphs) {
+    if (paragraph.length > limit) {
+      pushCurrent();
+      chunks.push(...splitLongStorageText(paragraph, limit));
+      continue;
+    }
+
+    if (!current) {
+      current = paragraph;
+    } else if (current.length + paragraph.length + 2 <= limit) {
+      current += `\n\n${paragraph}`;
+    } else {
+      pushCurrent();
+      current = paragraph;
+    }
+  }
+
+  pushCurrent();
+  return chunks;
+}
+
+function splitLongStorageText(text: string, maxChars: number): string[] {
+  const chunks: string[] = [];
+  let remaining = text.trim();
+
+  while (remaining.length > maxChars) {
+    const window = remaining.slice(0, maxChars + 1);
+    const candidates = [
+      window.lastIndexOf('\n'),
+      window.lastIndexOf('. '),
+      window.lastIndexOf('! '),
+      window.lastIndexOf('? '),
+      window.lastIndexOf(' '),
+    ];
+    let splitAt = Math.max(...candidates);
+    if (splitAt < Math.floor(maxChars * 0.5)) splitAt = maxChars;
+
+    const chunk = remaining.slice(0, splitAt).trim();
+    if (chunk) chunks.push(chunk);
+    remaining = remaining.slice(splitAt).trim();
+  }
+
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
+
+export function buildSourceChunkPages(opts: {
+  slug: string;
+  markdown: string;
+  sourceBody?: string;
+  maxChars?: number;
+  processedAt?: string;
+}): SourceChunkPage[] {
+  const { frontmatter } = parseFrontmatter(opts.markdown);
+  const sourceBody = opts.sourceBody ?? cleanSourceBody(opts.markdown);
+  const chunks = splitSourceBodyForStorage(sourceBody, opts.maxChars);
+  const title = cleanString(frontmatter.title, 180) || opts.slug.split('/').pop()?.replace(/-/g, ' ') || opts.slug;
+  const processedAt = opts.processedAt || new Date().toISOString();
+  const total = chunks.length;
+
+  return chunks.map((content, i) => {
+    const index = i + 1;
+    const chunkTitle = `${title} source chunk ${index}/${total}`;
+    const slug = sourceChunkSlug(opts.slug, index);
+    const fmLines = [
+      '---',
+      `title: ${yamlQuoted(chunkTitle)}`,
+      'type: reference',
+      'tags: [clipbrain-source-chunk]',
+      `parent_slug: ${yamlQuoted(opts.slug)}`,
+      `source_chunk_index: ${index}`,
+      `source_chunk_total: ${total}`,
+    ];
+
+    if (frontmatter.source_url) fmLines.push(`source_url: ${frontmatter.source_url}`);
+    if (frontmatter.source) fmLines.push(`source: ${frontmatter.source}`);
+    if (frontmatter.captured_at) fmLines.push(`captured_at: ${frontmatter.captured_at}`);
+
+    fmLines.push(`compiler_version: ${KNOWLEDGE_COMPILER_VERSION}`);
+    fmLines.push(`processed_at: ${processedAt}`);
+    fmLines.push('---');
+
+    const markdown = [
+      fmLines.join('\n'),
+      '',
+      `Parent: ${opts.slug}`,
+      '',
+      content,
+      '',
+    ].join('\n');
+
+    return {
+      slug,
+      title: chunkTitle,
+      index,
+      total,
+      charCount: content.length,
+      markdown,
+      content,
+    };
+  });
+}
+
+function sourceChunkSlug(parentSlug: string, index: number): string {
+  const safeParent = parentSlug
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^a-z0-9/_-]+/gi, '-')
+    .replace(/\/+/g, '/')
+    .replace(/-+/g, '-');
+  return `clipbrain-source/${safeParent}/chunk-${String(index).padStart(3, '0')}`;
+}
+
+function yamlQuoted(value: string): string {
+  return JSON.stringify(value);
 }
 
 function hasKnowledgeAtoms(atoms: KnowledgeAtoms): boolean {
@@ -711,10 +894,38 @@ export async function postProcess(slug: string, markdown: string, force = false)
   // 6. Enrich and re-save
   const enrichedMarkdown = enrichMarkdown(markdown, result, relatedContent);
 
-  await gbrainPut(slug, enrichedMarkdown);
+  let savedMarkdown = enrichedMarkdown;
+  try {
+    await gbrainPut(slug, enrichedMarkdown);
+  } catch (err) {
+    if (!isEmbeddingContextLimitError(err)) throw err;
+
+    const chunkPages = buildSourceChunkPages({ slug, markdown });
+    if (chunkPages.length === 0) throw err;
+
+    const compactMarkdown = enrichMarkdown(markdown, result, relatedContent, {
+      sourceStorage: {
+        mode: 'chunked',
+        chunks: chunkPages.map(({ slug, title, index, total, charCount }) => ({
+          slug,
+          title,
+          index,
+          total,
+          charCount,
+        })),
+      },
+    });
+
+    for (const page of chunkPages) {
+      await gbrainPut(page.slug, page.markdown);
+    }
+    await gbrainPut(slug, compactMarkdown);
+    savedMarkdown = compactMarkdown;
+    console.warn(`[post-process] stored ${slug} with chunked source fallback (${chunkPages.length} chunks)`);
+  }
 
   // 7. Re-sync to Obsidian with wikilinks
-  await obsidianSync(slug, enrichedMarkdown);
+  await obsidianSync(slug, savedMarkdown);
 
   const tagCount = result.tags.length;
   const connCount = result.connections.filter(c => c.slug || relatedContent.some(r => r.title.toLowerCase() === c.title.toLowerCase())).length;

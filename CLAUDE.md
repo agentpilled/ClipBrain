@@ -54,6 +54,9 @@ After each capture, if `OPENAI_API_KEY` is set, the server runs AI post-processi
 - Finds connections to existing content in the knowledge base
 - Extracts knowledge atoms: claims, quotes, entities, open questions, and actions
 - Enriches the markdown with `## Summary`, `## Why It Matters`, `## Knowledge Atoms`, and `## Related` sections
+- If `gbrain put` rejects an enriched page because the embedding context is too
+  large, stores the parent as a compact Knowledge Compiler page and writes the
+  raw source into searchable `clipbrain-source/.../chunk-NNN` pages
 - Re-syncs to Obsidian with wikilinks
 
 Post-processing is fire-and-forget: failures never affect the capture flow. If `OPENAI_API_KEY` is not set, everything works without it.
