@@ -14,6 +14,7 @@ import {
   parseContextPackSource,
   formatContextPackMarkdown,
   buildContextPack,
+  selectContextPackSources,
 } from '../server.ts';
 import type { CaptureLogEntry } from '../server.ts';
 
@@ -341,6 +342,34 @@ describe('context packs', () => {
     expect(source.snippet).toBe('retrieval snippet');
   });
 
+  test('parses folded gbrain frontmatter in context pack sources', () => {
+    const markdown = [
+      '---',
+      'title: >-',
+      "  '''Range: Why Generalists Triumph",
+      "  by David Epstein'''",
+      'type: reference',
+      'tags:',
+      '  - cognition',
+      '  - specialization',
+      '---',
+      '',
+      '## Summary',
+      '',
+      'Generalists can integrate broadly across domains.',
+    ].join('\n');
+
+    const source = parseContextPackSource({
+      slug: 'kindle/range',
+      content: markdown,
+      index: 1,
+    });
+
+    expect(source.title).toBe('Range: Why Generalists Triumph by David Epstein');
+    expect(source.tags).toEqual(['cognition', 'specialization']);
+    expect(source.summary).toContain('integrate broadly');
+  });
+
   test('formats context pack markdown with source citations', () => {
     const source = parseContextPackSource({
       slug: 'web/example-com/agents-memory',
@@ -362,6 +391,34 @@ describe('context packs', () => {
     expect(markdown).toContain('- Which clips should become reusable context packs?');
     expect(markdown).toContain('Possible actions:');
     expect(markdown).toContain('- Build context packs for coding agents.');
+  });
+
+  test('deduplicates sources by title and prefers richer atom coverage', () => {
+    const legacy = parseContextPackSource({
+      slug: 'kindle/legacy-range',
+      content: [
+        '---',
+        'title: Range',
+        'type: reference',
+        '---',
+        '',
+        '## Summary',
+        '',
+        'Legacy summary.',
+      ].join('\n'),
+      index: 1,
+    });
+    const compiled = parseContextPackSource({
+      slug: 'kindle/current-range',
+      content: compiledMarkdown.replace('Knowledge Bases for Agents', 'Range'),
+      index: 2,
+    });
+
+    const selected = selectContextPackSources([legacy, compiled], 1);
+    expect(selected).toHaveLength(1);
+    expect(selected[0].slug).toBe('kindle/current-range');
+    expect(selected[0].id).toBe('S1');
+    expect(selected[0].atoms.claims.length).toBeGreaterThan(0);
   });
 
   test('builds empty context packs without throwing', () => {
@@ -542,6 +599,22 @@ describe('HTTP server', () => {
     expect(body.query).toBe('missing-topic');
     expect(body.sources).toEqual([]);
     expect(body.markdown).toContain('No relevant sources found.');
+  });
+
+  test('POST /api/reprocess-all supports dry-run without OpenAI credentials', async () => {
+    const res = await fetch(`${BASE}/api/reprocess-all?dry_run=true`, { method: 'POST' });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe('dry_run');
+    expect(body.queued).toBe(0);
+    expect(body.candidates).toEqual([]);
+  });
+
+  test('POST /api/reprocess-all requires OpenAI credentials when applying', async () => {
+    const res = await fetch(`${BASE}/api/reprocess-all`, { method: 'POST' });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('OPENAI_API_KEY');
   });
 
   // -------------------------------------------------------------------------

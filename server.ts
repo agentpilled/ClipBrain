@@ -4,7 +4,7 @@
 // Receives web captures from the Chrome extension and stores them via `gbrain put` CLI.
 
 import { PDFParse } from 'pdf-parse';
-import { postProcess } from './post-process.ts';
+import { getBackfillReason, KNOWLEDGE_COMPILER_VERSION, postProcess } from './post-process.ts';
 
 const DEFAULT_PORT = 19285;
 const DEFAULT_HOST = '127.0.0.1';
@@ -629,6 +629,7 @@ async function handleContextPack(req: Request): Promise<Response> {
     const results = parseGbrainOutput(output, limit * 2);
     const sources: ContextPackSource[] = [];
     const seen = new Set<string>();
+    const fetchLimit = limit * 2;
 
     for (const result of results) {
       const slug = result.slug?.trim();
@@ -648,10 +649,10 @@ async function handleContextPack(req: Request): Promise<Response> {
         console.warn(`[context-pack] skipped ${slug}: ${err.message}`);
       }
 
-      if (sources.length >= limit) break;
+      if (sources.length >= fetchLimit) break;
     }
 
-    const pack = buildContextPack(query, sources);
+    const pack = buildContextPack(query, selectContextPackSources(sources, limit));
     return corsResponse(200, pack);
   } catch (err: any) {
     console.error('[context-pack]', err.message);
@@ -668,6 +669,32 @@ export function buildContextPack(query: string, sources: ContextPackSource[]): C
     sources,
     markdown: formatContextPackMarkdown(query, sources, generatedAt),
   };
+}
+
+export function selectContextPackSources(sources: ContextPackSource[], limit: number): ContextPackSource[] {
+  const selected: ContextPackSource[] = [];
+  const keyToIndex = new Map<string, number>();
+
+  for (const source of sources) {
+    const key = normalizeContextPackTitle(source.title) || source.slug;
+    const existingIndex = keyToIndex.get(key);
+
+    if (existingIndex === undefined) {
+      keyToIndex.set(key, selected.length);
+      selected.push(source);
+      continue;
+    }
+
+    const existing = selected[existingIndex];
+    if (contextPackSourceScore(source) > contextPackSourceScore(existing)) {
+      selected[existingIndex] = source;
+    }
+  }
+
+  return selected.slice(0, limit).map((source, index) => ({
+    ...source,
+    id: `S${index + 1}`,
+  }));
 }
 
 export function parseContextPackSource(opts: {
@@ -800,12 +827,22 @@ function parseSimpleFrontmatter(markdown: string): Record<string, string> {
   if (end === -1) return frontmatter;
 
   const lines = markdown.slice(4, end).split('\n');
-  for (const line of lines) {
-    const match = line.match(/^([A-Za-z_][\w_]*):\s*(.+)$/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^([A-Za-z_][\w_]*):\s*(.*)$/);
     if (!match) continue;
     let value = match[2].trim();
-    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-    frontmatter[match[1]] = value;
+
+    if (isYamlBlockScalar(value)) {
+      const block: string[] = [];
+      while (i + 1 < lines.length && /^\s+/.test(lines[i + 1])) {
+        block.push(lines[++i].trim());
+      }
+      frontmatter[match[1]] = cleanFrontmatterValue(block.join(' '));
+      continue;
+    }
+
+    frontmatter[match[1]] = cleanFrontmatterValue(value);
   }
 
   return frontmatter;
@@ -848,6 +885,33 @@ function firstMeaningfulBodyText(markdown: string): string {
 
 function cleanContextSnippet(snippet: string): string {
   return snippet.replace(/\s+/g, ' ').trim().slice(0, 500);
+}
+
+function normalizeContextPackTitle(title: string): string {
+  return title.toLowerCase().replace(/['"`]+/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function contextPackSourceScore(source: ContextPackSource): number {
+  return (source.summary ? 3 : 0) +
+    (source.snippet ? 1 : 0) +
+    source.atoms.claims.length * 4 +
+    source.atoms.quotes.length * 3 +
+    source.atoms.entities.length * 2 +
+    source.atoms.questions.length +
+    source.atoms.actions.length;
+}
+
+function isYamlBlockScalar(value: string): boolean {
+  return value === '>' || value === '>-' || value === '>+' || value === '|' || value === '|-' || value === '|+';
+}
+
+function cleanFrontmatterValue(value: string): string {
+  let cleaned = value.replace(/\s+/g, ' ').trim();
+  if (cleaned.startsWith("'''") && cleaned.endsWith("'''")) return cleaned.slice(3, -3);
+  if (cleaned.startsWith('"""') && cleaned.endsWith('"""')) return cleaned.slice(3, -3);
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) return cleaned.slice(1, -1);
+  if (cleaned.startsWith("'") && cleaned.endsWith("'")) return cleaned.slice(1, -1);
+  return cleaned;
 }
 
 function formatContextPackEntity(entity: ContextPackAtoms['entities'][number]): string {
@@ -1396,8 +1460,24 @@ async function handleGraph(): Promise<Response> {
 // Reprocess all endpoint
 // ---------------------------------------------------------------------------
 
-async function handleReprocessAll(): Promise<Response> {
-  if (!process.env.OPENAI_API_KEY) {
+async function handleReprocessAll(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const dryRun = url.searchParams.get('dry_run') === 'true';
+  const force = url.searchParams.get('force') === 'true';
+  const limit = clampNumber(parseInt(url.searchParams.get('limit') || '10', 10), 1, 100);
+  const type = (url.searchParams.get('type') || '').trim().toLowerCase();
+  const slugPrefix = (url.searchParams.get('slug_prefix') || '').trim();
+  const allowedTypes = new Set(['kindle', 'web', 'pdf', 'youtube', 'email']);
+
+  if (type && !allowedTypes.has(type)) {
+    return corsResponse(400, { error: 'type must be one of: kindle, web, pdf, youtube, email' });
+  }
+
+  if (slugPrefix && !['kindle/', 'web/', 'pdf/', 'youtube/', 'email/'].some(prefix => slugPrefix.startsWith(prefix))) {
+    return corsResponse(400, { error: 'slug_prefix must start with kindle/, web/, pdf/, youtube/, or email/' });
+  }
+
+  if (!dryRun && !process.env.OPENAI_API_KEY) {
     return corsResponse(400, { error: 'OPENAI_API_KEY not set. Enable smart processing by setting this environment variable.' });
   }
 
@@ -1405,28 +1485,60 @@ async function handleReprocessAll(): Promise<Response> {
     const output = await gbrainExec(['list', '--limit', '10000']);
     const lines = output.trim().split('\n').filter(Boolean);
 
-    let queued = 0;
+    const candidates: Array<{ slug: string; title: string; type: string; reason: string }> = [];
+    let scanned = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const line of lines) {
       const parts = line.split('\t');
       const slug = parts[0]?.trim();
       if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/') && !slug.startsWith('email/'))) continue;
+      if (type && !slug.startsWith(`${type}/`)) continue;
+      if (slugPrefix && !slug.startsWith(slugPrefix)) continue;
+
+      scanned++;
 
       try {
         const content = await gbrainExec(['get', slug]);
+        const reason = getBackfillReason(content, force);
+        if (!reason) {
+          skipped++;
+          continue;
+        }
 
-        // Process in background with force=true
-        postProcess(slug, content, true).catch(err => {
-          console.warn(`[reprocess-all] failed for ${slug}:`, err.message);
-        });
-        queued++;
-      } catch {
-        skipped++;
+        const candidate = {
+          slug,
+          title: parts[3]?.trim() || slug.split('/').pop()?.replace(/-/g, ' ') || slug,
+          type: parts[1]?.trim() || slug.split('/')[0] || 'unknown',
+          reason,
+        };
+        candidates.push(candidate);
+
+        if (!dryRun) {
+          postProcess(slug, content, true).catch(err => {
+            console.warn(`[reprocess-all] failed for ${slug}:`, err.message);
+          });
+        }
+      } catch (err: any) {
+        failed++;
+        console.warn(`[reprocess-all] skipped ${slug}:`, err.message);
       }
+
+      if (candidates.length >= limit) break;
     }
 
-    return corsResponse(202, { status: 'started', queued, skipped });
+    return corsResponse(dryRun ? 200 : 202, {
+      status: dryRun ? 'dry_run' : 'started',
+      compilerVersion: KNOWLEDGE_COMPILER_VERSION,
+      queued: dryRun ? 0 : candidates.length,
+      scanned,
+      skipped,
+      failed,
+      limit,
+      force,
+      candidates,
+    });
   } catch (err: any) {
     return corsResponse(500, { error: err.message });
   }
@@ -1910,7 +2022,7 @@ if (import.meta.main) {
 
       // Reprocess all endpoint
       if (url.pathname === '/api/reprocess-all' && req.method === 'POST') {
-        return handleReprocessAll();
+        return handleReprocessAll(req);
       }
 
       return corsResponse(404, { error: 'Not found' });

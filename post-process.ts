@@ -29,6 +29,8 @@ export interface Connection {
   reason: string;  // Why this is connected (1 sentence)
 }
 
+export const KNOWLEDGE_COMPILER_VERSION = 'clipbrain-kc-v1';
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -394,20 +396,37 @@ export function parseFrontmatter(markdown: string): { frontmatter: Record<string
   const fmLines = lines.slice(1, endIdx);
   const fm: Record<string, any> = {};
 
-  for (const line of fmLines) {
+  for (let i = 0; i < fmLines.length; i++) {
+    const line = fmLines[i];
     const match = line.match(/^(\w[\w_]*)\s*:\s*(.*)$/);
     if (match) {
       const key = match[1];
       let value = match[2].trim();
 
-      // Handle quoted strings
-      if (value.startsWith('"') && value.endsWith('"')) {
-        value = value.slice(1, -1);
+      if (isYamlBlockScalar(value)) {
+        const block: string[] = [];
+        while (i + 1 < fmLines.length && /^\s+/.test(fmLines[i + 1])) {
+          block.push(fmLines[++i].trim());
+        }
+        fm[key] = cleanFrontmatterValue(block.join(' '));
+        continue;
       }
+
+      if (!value && i + 1 < fmLines.length && /^\s+-\s+/.test(fmLines[i + 1])) {
+        const items: string[] = [];
+        while (i + 1 < fmLines.length && /^\s+-\s+/.test(fmLines[i + 1])) {
+          items.push(cleanFrontmatterValue(fmLines[++i].replace(/^\s+-\s+/, '')));
+        }
+        fm[key] = items;
+        continue;
+      }
+
+      // Handle quoted strings
+      value = cleanFrontmatterValue(value);
 
       // Handle arrays like [tag1, tag2]
       if (value.startsWith('[') && value.endsWith(']')) {
-        fm[key] = value.slice(1, -1).split(',').map(s => s.trim());
+        fm[key] = value.slice(1, -1).split(',').map(s => cleanFrontmatterValue(s));
       } else {
         fm[key] = value;
       }
@@ -416,6 +435,19 @@ export function parseFrontmatter(markdown: string): { frontmatter: Record<string
 
   const body = lines.slice(endIdx + 1).join('\n');
   return { frontmatter: fm, body };
+}
+
+function isYamlBlockScalar(value: string): boolean {
+  return value === '>' || value === '>-' || value === '>+' || value === '|' || value === '|-' || value === '|+';
+}
+
+function cleanFrontmatterValue(value: string): string {
+  let cleaned = value.replace(/\s+/g, ' ').trim();
+  if (cleaned.startsWith("'''") && cleaned.endsWith("'''")) return cleaned.slice(3, -3);
+  if (cleaned.startsWith('"""') && cleaned.endsWith('"""')) return cleaned.slice(3, -3);
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) return cleaned.slice(1, -1);
+  if (cleaned.startsWith("'") && cleaned.endsWith("'")) return cleaned.slice(1, -1);
+  return cleaned;
 }
 
 // ---------------------------------------------------------------------------
@@ -468,6 +500,7 @@ export function enrichMarkdown(
   if (frontmatter.source) fmLines.push(`source: ${frontmatter.source}`);
   if (frontmatter.captured_at) fmLines.push(`captured_at: ${frontmatter.captured_at}`);
   if (frontmatter.pages) fmLines.push(`pages: ${frontmatter.pages}`);
+  fmLines.push(`compiler_version: ${KNOWLEDGE_COMPILER_VERSION}`);
   fmLines.push(`processed_at: ${new Date().toISOString()}`);
   fmLines.push('---');
 
@@ -587,6 +620,25 @@ export function generateWikilinks(connections: Connection[]): string {
 
 export function isAlreadyProcessed(markdown: string): boolean {
   return /^processed_at:\s*.+$/m.test(markdown);
+}
+
+export function getKnowledgeCompilerVersion(markdown: string): string {
+  const { frontmatter } = parseFrontmatter(markdown);
+  return typeof frontmatter.compiler_version === 'string' ? frontmatter.compiler_version : '';
+}
+
+export function isCurrentKnowledgeCompiler(markdown: string): boolean {
+  return getKnowledgeCompilerVersion(markdown) === KNOWLEDGE_COMPILER_VERSION;
+}
+
+export function getBackfillReason(markdown: string, force = false): string | null {
+  if (force) return 'force';
+
+  const version = getKnowledgeCompilerVersion(markdown);
+  if (!version) return isAlreadyProcessed(markdown) ? 'legacy-processed' : 'unprocessed';
+  if (version !== KNOWLEDGE_COMPILER_VERSION) return `outdated:${version}`;
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------

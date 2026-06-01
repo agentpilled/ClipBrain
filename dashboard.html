@@ -926,7 +926,7 @@
     </div>
     <div class="status-bar-right">
       <span class="processing-note" id="processingNote" style="display:none;">Enable smart processing with OPENAI_API_KEY</span>
-      <button class="reprocess-btn" id="reprocessBtn" style="display:none;">Reprocess all</button>
+      <button class="reprocess-btn" id="reprocessBtn" style="display:none;">Backfill atoms</button>
       <button class="sync-all-btn" id="connectObsidianBtn" style="display:none;">Connect Obsidian</button>
       <button class="sync-all-btn" id="syncAllBtn" style="display:none;">Sync all</button>
     </div>
@@ -1572,7 +1572,7 @@
         reprocessBtn.disabled = true;
         reprocessBtn.textContent = 'Processing...';
         try {
-          const r = await fetch('/api/reprocess-all', { method: 'POST' });
+          const r = await fetch('/api/reprocess-all?limit=10', { method: 'POST' });
           const res = await r.json();
           if (r.ok) {
             reprocessBtn.textContent = `Queued ${res.queued || 0}`;
@@ -1580,13 +1580,13 @@
             reprocessBtn.textContent = res.error || 'Failed';
           }
           setTimeout(() => {
-            reprocessBtn.textContent = 'Reprocess all';
+            reprocessBtn.textContent = 'Backfill atoms';
             reprocessBtn.disabled = false;
           }, 4000);
         } catch {
           reprocessBtn.textContent = 'Failed';
           setTimeout(() => {
-            reprocessBtn.textContent = 'Reprocess all';
+            reprocessBtn.textContent = 'Backfill atoms';
             reprocessBtn.disabled = false;
           }, 3000);
         }

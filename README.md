@@ -85,6 +85,14 @@ possible actions.
 
 Agents can request the same payload through MCP with the `context_pack` tool.
 
+To upgrade older captures into the latest Knowledge Compiler format, run a
+safe dry-run first:
+
+```bash
+bun run backfill --limit 20
+bun run backfill --apply --limit 5
+```
+
 ## Dashboard
 
 Open **http://127.0.0.1:19285** to browse your knowledge base.

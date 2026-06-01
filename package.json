@@ -6,6 +6,7 @@
   "scripts": {
     "vendor": "cp node_modules/@mozilla/readability/Readability.js lib/readability.js",
     "setup": "./setup.sh",
+    "backfill": "bun run backfill.ts",
     "mcp": "bun run clipbrain-mcp.ts",
     "serve": "bun run server.ts",
     "serve:bg": "bun run server.ts &",

@@ -3,7 +3,11 @@ import {
   parseOpenAIResponse,
   enrichMarkdown,
   generateWikilinks,
+  getBackfillReason,
+  getKnowledgeCompilerVersion,
   isAlreadyProcessed,
+  isCurrentKnowledgeCompiler,
+  KNOWLEDGE_COMPILER_VERSION,
   parseFrontmatter,
 } from '../post-process.ts';
 import type { ProcessResult, Connection } from '../post-process.ts';
@@ -265,6 +269,11 @@ describe('enrichMarkdown', () => {
     expect(enriched).toMatch(/^processed_at: \d{4}-\d{2}-\d{2}T/m);
   });
 
+  test('adds compiler version to frontmatter', () => {
+    const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
+    expect(enriched).toContain(`compiler_version: ${KNOWLEDGE_COMPILER_VERSION}`);
+  });
+
   test('preserves original source_url and captured_at', () => {
     const enriched = enrichMarkdown(sampleMarkdown, sampleResult, relatedContent);
     expect(enriched).toContain('source_url: https://example.com/test');
@@ -412,6 +421,26 @@ describe('isAlreadyProcessed', () => {
   });
 });
 
+describe('knowledge compiler version helpers', () => {
+  test('detects current compiler version', () => {
+    const md = `---\ntitle: "Test"\ncompiler_version: ${KNOWLEDGE_COMPILER_VERSION}\nprocessed_at: 2026-04-14T12:00:00.000Z\n---\nContent`;
+    expect(getKnowledgeCompilerVersion(md)).toBe(KNOWLEDGE_COMPILER_VERSION);
+    expect(isCurrentKnowledgeCompiler(md)).toBe(true);
+    expect(getBackfillReason(md)).toBeNull();
+  });
+
+  test('marks unprocessed and legacy processed markdown for backfill', () => {
+    expect(getBackfillReason('---\ntitle: "Test"\n---\nContent')).toBe('unprocessed');
+    expect(getBackfillReason('---\ntitle: "Test"\nprocessed_at: 2026-04-14T12:00:00.000Z\n---\nContent')).toBe('legacy-processed');
+  });
+
+  test('marks outdated compiler versions and forced runs', () => {
+    const old = '---\ntitle: "Test"\ncompiler_version: old-version\n---\nContent';
+    expect(getBackfillReason(old)).toBe('outdated:old-version');
+    expect(getBackfillReason(old, true)).toBe('force');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // parseFrontmatter
 // ---------------------------------------------------------------------------
@@ -436,5 +465,25 @@ describe('parseFrontmatter', () => {
     const md = '---\ntags: [foo, bar, baz]\n---\nContent';
     const { frontmatter } = parseFrontmatter(md);
     expect(frontmatter.tags).toEqual(['foo', 'bar', 'baz']);
+  });
+
+  test('parses folded YAML scalars and block arrays from gbrain output', () => {
+    const md = [
+      '---',
+      'title: >-',
+      "  '''Range: Why Generalists Triumph",
+      "  by David Epstein'''",
+      'tags:',
+      '  - cognition',
+      '  - specialization',
+      'compiler_version: clipbrain-kc-v1',
+      '---',
+      'Content',
+    ].join('\n');
+
+    const { frontmatter } = parseFrontmatter(md);
+    expect(frontmatter.title).toBe('Range: Why Generalists Triumph by David Epstein');
+    expect(frontmatter.tags).toEqual(['cognition', 'specialization']);
+    expect(frontmatter.compiler_version).toBe('clipbrain-kc-v1');
   });
 });

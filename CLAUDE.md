@@ -58,6 +58,17 @@ After each capture, if `OPENAI_API_KEY` is set, the server runs AI post-processi
 
 Post-processing is fire-and-forget: failures never affect the capture flow. If `OPENAI_API_KEY` is not set, everything works without it.
 
+### Knowledge Backfill (backfill.ts)
+
+Older captures can be upgraded into the current Knowledge Compiler format with:
+
+```bash
+bun run backfill --limit 20          # dry run
+bun run backfill --apply --limit 5   # writes enriched pages
+```
+
+The backfill targets ClipBrain slugs (`kindle/`, `web/`, `pdf/`, `youtube/`, `email/`) whose `compiler_version` is missing or outdated. Use `--force` only when intentionally refreshing already-current pages.
+
 ## Setup
 
 ```bash
