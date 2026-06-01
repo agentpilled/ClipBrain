@@ -72,6 +72,17 @@ After setup, your AI already has access via MCP. Just talk naturally:
 
 Works with **Claude Code**, **OpenClaw**, **Claude Desktop**, **Cursor**, and any MCP-compatible tool.
 
+For agent workflows that need a compact handoff, ClipBrain can build a cited
+context pack from your saved knowledge:
+
+```bash
+curl "http://127.0.0.1:19285/api/context-pack?q=decision-making&limit=6"
+```
+
+The response includes structured sources plus markdown with `[S#]` citations,
+retrieval snippets, summaries, claims, quotes, entities, open questions, and
+possible actions.
+
 ## Dashboard
 
 Open **http://127.0.0.1:19285** to browse your knowledge base.

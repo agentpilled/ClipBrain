@@ -2,7 +2,19 @@ import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { canonicalizeUrl, slugFromUrl, buildMarkdown, detectCaptureType, formatDigestMarkdown, isAllowedOrigin, isAuthorizedRequest, parseKnowledgeAtoms } from '../server.ts';
+import {
+  canonicalizeUrl,
+  slugFromUrl,
+  buildMarkdown,
+  detectCaptureType,
+  formatDigestMarkdown,
+  isAllowedOrigin,
+  isAuthorizedRequest,
+  parseKnowledgeAtoms,
+  parseContextPackSource,
+  formatContextPackMarkdown,
+  buildContextPack,
+} from '../server.ts';
 import type { CaptureLogEntry } from '../server.ts';
 
 // ---------------------------------------------------------------------------
@@ -257,6 +269,110 @@ describe('parseKnowledgeAtoms', () => {
   });
 });
 
+describe('context packs', () => {
+  const compiledMarkdown = [
+    '---',
+    'title: "Knowledge Bases for Agents"',
+    'type: reference',
+    'tags: [ai-memory, agents, knowledge]',
+    'source_url: https://example.com/agents-memory',
+    '---',
+    '',
+    '## Summary',
+    '',
+    'Agents become more useful when they can retrieve durable, source-grounded memory.',
+    '',
+    '## Knowledge Atoms',
+    '',
+    '### Claims',
+    '',
+    '- Retrieval quality matters more than raw storage volume.',
+    '- Context should be compact enough for an agent to act on.',
+    '',
+    '### Quotes',
+    '',
+    '> Capture is not knowledge.',
+    '',
+    '### Entities',
+    '',
+    '- **ClipBrain** (project) - Compiles captured reading into memory',
+    '',
+    '### Open Questions',
+    '',
+    '- Which clips should become reusable context packs?',
+    '',
+    '### Actions',
+    '',
+    '- [ ] Build context packs for coding agents.',
+    '',
+    '---',
+    '',
+    'Original article body.',
+  ].join('\n');
+
+  test('parses a source into an agent-ready context card', () => {
+    const source = parseContextPackSource({
+      slug: 'web/example-com/agents-memory',
+      content: compiledMarkdown,
+      snippet: 'retrieval snippet',
+      index: 2,
+    });
+
+    expect(source.id).toBe('S2');
+    expect(source.title).toBe('Knowledge Bases for Agents');
+    expect(source.type).toBe('reference');
+    expect(source.sourceUrl).toBe('https://example.com/agents-memory');
+    expect(source.tags).toEqual(['ai-memory', 'agents', 'knowledge']);
+    expect(source.summary).toContain('durable, source-grounded memory');
+    expect(source.atoms.claims).toEqual([
+      'Retrieval quality matters more than raw storage volume.',
+      'Context should be compact enough for an agent to act on.',
+    ]);
+    expect(source.atoms.quotes).toEqual(['Capture is not knowledge.']);
+    expect(source.atoms.entities).toEqual([
+      {
+        name: 'ClipBrain',
+        type: 'project',
+        relevance: 'Compiles captured reading into memory',
+      },
+    ]);
+    expect(source.atoms.questions).toEqual(['Which clips should become reusable context packs?']);
+    expect(source.atoms.actions).toEqual(['Build context packs for coding agents.']);
+    expect(source.snippet).toBe('retrieval snippet');
+  });
+
+  test('formats context pack markdown with source citations', () => {
+    const source = parseContextPackSource({
+      slug: 'web/example-com/agents-memory',
+      content: compiledMarkdown,
+      index: 1,
+    });
+
+    const markdown = formatContextPackMarkdown('agent memory', [source]);
+    expect(markdown).toContain('# Context Pack: agent memory');
+    expect(markdown).toContain('- [S1] Knowledge Bases for Agents');
+    expect(markdown).toContain('## [S1] Knowledge Bases for Agents');
+    expect(markdown).toContain('Claims:');
+    expect(markdown).toContain('- Retrieval quality matters more than raw storage volume.');
+    expect(markdown).toContain('Quotes:');
+    expect(markdown).toContain('> Capture is not knowledge.');
+    expect(markdown).toContain('Entities:');
+    expect(markdown).toContain('- ClipBrain (project) - Compiles captured reading into memory');
+    expect(markdown).toContain('Open questions:');
+    expect(markdown).toContain('- Which clips should become reusable context packs?');
+    expect(markdown).toContain('Possible actions:');
+    expect(markdown).toContain('- Build context packs for coding agents.');
+  });
+
+  test('builds empty context packs without throwing', () => {
+    const pack = buildContextPack('missing topic', []);
+    expect(pack.query).toBe('missing topic');
+    expect(pack.sources).toEqual([]);
+    expect(pack.markdown).toContain(`Generated: ${pack.generatedAt}`);
+    expect(pack.markdown).toContain('No relevant sources found.');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Integration tests — HTTP endpoints
 // ---------------------------------------------------------------------------
@@ -410,6 +526,22 @@ describe('HTTP server', () => {
   test('GET /unknown returns 404', async () => {
     const res = await fetch(`${BASE}/unknown`);
     expect(res.status).toBe(404);
+  });
+
+  test('GET /api/context-pack requires a query', async () => {
+    const res = await fetch(`${BASE}/api/context-pack`);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('q');
+  });
+
+  test('GET /api/context-pack returns an empty pack when retrieval has no matches', async () => {
+    const res = await fetch(`${BASE}/api/context-pack?q=missing-topic`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.query).toBe('missing-topic');
+    expect(body.sources).toEqual([]);
+    expect(body.markdown).toContain('No relevant sources found.');
   });
 
   // -------------------------------------------------------------------------

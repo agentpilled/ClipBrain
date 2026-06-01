@@ -368,6 +368,27 @@ export type CaptureLogEntry = {
   from?: string;
 };
 
+export type ContextPackAtoms = ReturnType<typeof parseKnowledgeAtoms>;
+
+export type ContextPackSource = {
+  id: string;
+  slug: string;
+  title: string;
+  type: string;
+  summary: string;
+  tags: string[];
+  atoms: ContextPackAtoms;
+  snippet: string;
+  sourceUrl?: string;
+};
+
+export type ContextPack = {
+  query: string;
+  generatedAt: string;
+  sources: ContextPackSource[];
+  markdown: string;
+};
+
 async function recordCapture(entry: CaptureLogEntry): Promise<void> {
   const logFile = dataPath('.captures.jsonl');
   try {
@@ -592,6 +613,256 @@ async function handlePage(req: Request): Promise<Response> {
     console.error('[page]', err.message);
     return corsResponse(404, { error: 'Page not found' });
   }
+}
+
+async function handleContextPack(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const query = (url.searchParams.get('q') || url.searchParams.get('query') || '').trim();
+  const limit = clampNumber(parseInt(url.searchParams.get('limit') || '6', 10), 1, 10);
+
+  if (!query) {
+    return corsResponse(400, { error: 'Missing required parameter: q' });
+  }
+
+  try {
+    const output = await gbrainExec(['query', query]);
+    const results = parseGbrainOutput(output, limit * 2);
+    const sources: ContextPackSource[] = [];
+    const seen = new Set<string>();
+
+    for (const result of results) {
+      const slug = result.slug?.trim();
+      if (!slug || seen.has(slug)) continue;
+      seen.add(slug);
+
+      try {
+        const content = await gbrainExec(['get', slug]);
+        sources.push(parseContextPackSource({
+          slug,
+          content,
+          fallbackTitle: result.title,
+          snippet: result.snippet,
+          index: sources.length + 1,
+        }));
+      } catch (err: any) {
+        console.warn(`[context-pack] skipped ${slug}: ${err.message}`);
+      }
+
+      if (sources.length >= limit) break;
+    }
+
+    const pack = buildContextPack(query, sources);
+    return corsResponse(200, pack);
+  } catch (err: any) {
+    console.error('[context-pack]', err.message);
+    return corsResponse(500, { error: 'Failed to build context pack' });
+  }
+}
+
+export function buildContextPack(query: string, sources: ContextPackSource[]): ContextPack {
+  const generatedAt = new Date().toISOString();
+
+  return {
+    query,
+    generatedAt,
+    sources,
+    markdown: formatContextPackMarkdown(query, sources, generatedAt),
+  };
+}
+
+export function parseContextPackSource(opts: {
+  slug: string;
+  content: string;
+  fallbackTitle?: string;
+  snippet?: string;
+  index?: number;
+}): ContextPackSource {
+  const frontmatter = parseSimpleFrontmatter(opts.content);
+  const title = frontmatter.title || opts.fallbackTitle || opts.slug.split('/').pop()?.replace(/-/g, ' ') || opts.slug;
+  const type = frontmatter.type || detectCaptureType(opts.slug);
+  const summary = parseMarkdownSection(opts.content, 'Summary');
+  const tags = parseMarkdownTags(opts.content);
+  const atoms = parseKnowledgeAtoms(opts.content);
+  const sourceUrl = frontmatter.source_url || frontmatter.source;
+  const snippet = cleanContextSnippet(opts.snippet || firstMeaningfulBodyText(opts.content));
+
+  return {
+    id: `S${opts.index || 1}`,
+    slug: opts.slug,
+    title,
+    type,
+    summary,
+    tags,
+    atoms,
+    snippet,
+    sourceUrl,
+  };
+}
+
+export function formatContextPackMarkdown(query: string, sources: ContextPackSource[], generatedAt = new Date().toISOString()): string {
+  const lines: string[] = [
+    `# Context Pack: ${query}`,
+    '',
+    `Generated: ${generatedAt}`,
+    '',
+  ];
+
+  if (sources.length === 0) {
+    lines.push('No relevant sources found.');
+    return lines.join('\n');
+  }
+
+  lines.push('## Use This Context');
+  lines.push('');
+  lines.push('- Prefer cited claims over uncited inference.');
+  lines.push('- Cite sources by their `[S#]` labels when answering.');
+  lines.push('- Treat snippets as retrieval hints, not full evidence.');
+  lines.push('');
+
+  lines.push('## Sources');
+  lines.push('');
+  for (const source of sources) {
+    const meta = [source.type, source.slug].filter(Boolean).join(' | ');
+    lines.push(`- [${source.id}] ${source.title}${meta ? ` - ${meta}` : ''}`);
+  }
+  lines.push('');
+
+  for (const source of sources) {
+    lines.push(`## [${source.id}] ${source.title}`);
+    lines.push('');
+    lines.push(`Slug: \`${source.slug}\``);
+    if (source.sourceUrl) lines.push(`Source: ${source.sourceUrl}`);
+    if (source.tags.length > 0) lines.push(`Tags: ${source.tags.join(', ')}`);
+
+    if (source.snippet) {
+      lines.push('');
+      lines.push('Retrieval snippet:');
+      lines.push(source.snippet);
+    }
+
+    if (source.summary) {
+      lines.push('');
+      lines.push('Summary:');
+      lines.push(source.summary);
+    }
+
+    if (source.atoms.claims.length > 0) {
+      lines.push('');
+      lines.push('Claims:');
+      for (const claim of source.atoms.claims.slice(0, 5)) {
+        lines.push(`- ${claim}`);
+      }
+    }
+
+    if (source.atoms.quotes.length > 0) {
+      lines.push('');
+      lines.push('Quotes:');
+      for (const quote of source.atoms.quotes.slice(0, 3)) {
+        lines.push(`> ${quote}`);
+      }
+    }
+
+    if (source.atoms.entities.length > 0) {
+      lines.push('');
+      lines.push('Entities:');
+      for (const entity of source.atoms.entities.slice(0, 5)) {
+        lines.push(`- ${formatContextPackEntity(entity)}`);
+      }
+    }
+
+    if (source.atoms.questions.length > 0) {
+      lines.push('');
+      lines.push('Open questions:');
+      for (const question of source.atoms.questions.slice(0, 3)) {
+        lines.push(`- ${question}`);
+      }
+    }
+
+    if (source.atoms.actions.length > 0) {
+      lines.push('');
+      lines.push('Possible actions:');
+      for (const action of source.atoms.actions.slice(0, 3)) {
+        lines.push(`- ${action}`);
+      }
+    }
+
+    lines.push('');
+  }
+
+  return lines.join('\n').trimEnd() + '\n';
+}
+
+function parseSimpleFrontmatter(markdown: string): Record<string, string> {
+  const frontmatter: Record<string, string> = {};
+  if (!markdown.startsWith('---\n')) return frontmatter;
+
+  const end = markdown.indexOf('\n---', 4);
+  if (end === -1) return frontmatter;
+
+  const lines = markdown.slice(4, end).split('\n');
+  for (const line of lines) {
+    const match = line.match(/^([A-Za-z_][\w_]*):\s*(.+)$/);
+    if (!match) continue;
+    let value = match[2].trim();
+    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+    frontmatter[match[1]] = value;
+  }
+
+  return frontmatter;
+}
+
+function parseMarkdownSection(content: string, heading: string): string {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = content.match(new RegExp(`## ${escaped}\\s*\\n\\n?([\\s\\S]*?)(?=\\n## |\\n---\\n|$)`));
+  return match ? match[1].trim() : '';
+}
+
+function parseMarkdownTags(content: string): string[] {
+  const tags: string[] = [];
+  const tagLines = content.match(/^tags:\s*\n((?:\s+-\s+.+\n)*)/m);
+  if (tagLines) {
+    const matches = tagLines[1].matchAll(/^\s+-\s+(.+)$/gm);
+    for (const m of matches) tags.push(cleanMarkdownTag(m[1]));
+    return tags.filter(Boolean).slice(0, 8);
+  }
+
+  const inlineTags = content.match(/^tags:\s*\[(.*)\]\s*$/m);
+  if (!inlineTags) return [];
+  return inlineTags[1].split(',').map(cleanMarkdownTag).filter(Boolean).slice(0, 8);
+}
+
+function firstMeaningfulBodyText(markdown: string): string {
+  let withoutFrontmatter = markdown;
+  if (markdown.startsWith('---\n')) {
+    const end = markdown.indexOf('\n---', 4);
+    if (end !== -1) withoutFrontmatter = markdown.slice(end + 4);
+  }
+
+  return withoutFrontmatter
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('#') && !line.startsWith('---') && !line.startsWith('tags:'))
+    .slice(0, 5)
+    .join(' ');
+}
+
+function cleanContextSnippet(snippet: string): string {
+  return snippet.replace(/\s+/g, ' ').trim().slice(0, 500);
+}
+
+function formatContextPackEntity(entity: ContextPackAtoms['entities'][number]): string {
+  const type = entity.type ? ` (${entity.type})` : '';
+  const relevance = entity.relevance ? ` - ${entity.relevance}` : '';
+  return `${entity.name}${type}${relevance}`;
+}
+
+function cleanMarkdownTag(tag: string): string {
+  return tag.trim().replace(/^['"]|['"]$/g, '');
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }
 
 function parseGbrainOutput(output: string, limit: number): Array<Record<string, string>> {
@@ -1599,6 +1870,11 @@ if (import.meta.main) {
       // Page content endpoint
       if (url.pathname === '/api/page' && req.method === 'GET') {
         return handlePage(req);
+      }
+
+      // Agent-ready context pack endpoint
+      if (url.pathname === '/api/context-pack' && req.method === 'GET') {
+        return handleContextPack(req);
       }
 
       // Config endpoints
