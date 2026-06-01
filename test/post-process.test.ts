@@ -9,6 +9,7 @@ import {
   isCurrentKnowledgeCompiler,
   KNOWLEDGE_COMPILER_VERSION,
   parseFrontmatter,
+  wrapLongMarkdownLines,
 } from '../post-process.ts';
 import type { ProcessResult, Connection } from '../post-process.ts';
 
@@ -195,6 +196,25 @@ describe('parseOpenAIResponse', () => {
     ]);
     expect(result!.atoms!.questions).toEqual(['Q1?', 'Q2?', 'Q3?']);
     expect(result!.atoms!.actions).toEqual(['A1', 'A2', 'A3']);
+  });
+});
+
+describe('wrapLongMarkdownLines', () => {
+  test('wraps long prose lines without dropping content', () => {
+    const original = Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ');
+    const wrapped = wrapLongMarkdownLines(original, 80);
+
+    expect(wrapped.split('\n').every(line => line.length <= 80)).toBe(true);
+    expect(wrapped.replace(/\s+/g, ' ').trim()).toBe(original);
+  });
+
+  test('preserves quote prefixes when wrapping', () => {
+    const original = `> ${Array.from({ length: 40 }, (_, i) => `quote${i}`).join(' ')}`;
+    const wrapped = wrapLongMarkdownLines(original, 70);
+
+    expect(wrapped.split('\n').every(line => line.startsWith('> '))).toBe(true);
+    expect(wrapped.replace(/>\s*/g, '').replace(/\s+/g, ' ').trim())
+      .toBe(original.replace(/^>\s*/, ''));
   });
 });
 

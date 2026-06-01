@@ -591,8 +591,38 @@ export function enrichMarkdown(
   }
   // Clean up leading whitespace
   cleanBody = cleanBody.replace(/^\n+/, '\n');
+  cleanBody = wrapLongMarkdownLines(cleanBody);
 
   return fmLines.join('\n') + enrichedSections.join('\n') + cleanBody + '\n';
+}
+
+export function wrapLongMarkdownLines(markdown: string, maxLineLength = 1200): string {
+  return markdown
+    .split('\n')
+    .flatMap(line => wrapLongMarkdownLine(line, maxLineLength))
+    .join('\n');
+}
+
+function wrapLongMarkdownLine(line: string, maxLineLength: number): string[] {
+  if (line.length <= maxLineLength) return [line];
+
+  const quotePrefix = line.match(/^(\s*>\s*)/)?.[1] || '';
+  const content = quotePrefix ? line.slice(quotePrefix.length) : line;
+  const words = content.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = quotePrefix;
+
+  for (const word of words) {
+    if (current.length > quotePrefix.length && current.length + 1 + word.length > maxLineLength) {
+      lines.push(current);
+      current = quotePrefix + word;
+    } else {
+      current += current.length > quotePrefix.length ? ` ${word}` : word;
+    }
+  }
+
+  if (current.length > quotePrefix.length || lines.length === 0) lines.push(current);
+  return lines;
 }
 
 function hasKnowledgeAtoms(atoms: KnowledgeAtoms): boolean {
