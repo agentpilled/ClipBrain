@@ -467,6 +467,43 @@ describe('enrichMarkdown', () => {
     expect(source).toContain('> A highlight from the article');
     expect(source).not.toContain('## Knowledge Atoms');
   });
+
+  test('extracts original source body from legacy timeline-processed markdown', () => {
+    const legacy = [
+      '---',
+      'title: "Legacy Kindle"',
+      'processed_at: 2026-04-15T12:00:00.000Z',
+      '---',
+      '',
+      '## Summary',
+      '',
+      'New generated summary.',
+      '',
+      '---',
+      '',
+      '## Summary',
+      '',
+      'Old generated summary.',
+      '',
+      '## Related',
+      '',
+      '- [[Old Link]] - Old generated relation.',
+      '',
+      '<!-- timeline -->',
+      '',
+      '## Highlights',
+      '',
+      '> Durable source quote. (Location 42)',
+    ].join('\n');
+
+    const source = cleanSourceBody(legacy);
+
+    expect(source).toContain('<!-- timeline -->');
+    expect(source).toContain('> Durable source quote. (Location 42)');
+    expect(source).not.toContain('New generated summary.');
+    expect(source).not.toContain('Old generated summary.');
+    expect(source).not.toContain('## Related');
+  });
 });
 
 // ---------------------------------------------------------------------------

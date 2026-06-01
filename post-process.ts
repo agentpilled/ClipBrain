@@ -636,7 +636,13 @@ export function cleanSourceBody(markdown: string): string {
 function cleanSourceBodyFromParsed(frontmatter: Record<string, any>, body: string): string {
   let cleanBody = body;
   if (frontmatter.processed_at) {
-    cleanBody = cleanBody.replace(/^\s*## Summary\s*\n[\s\S]*?\n---\s*\n?/, '\n');
+    for (let i = 0; i < 5; i++) {
+      const next = cleanBody
+        .replace(/^\s*## Summary\s*\n[\s\S]*?(?=\n(?:---\s*\n|<!--\s*timeline\s*-->|## Highlights\b)|$)/, '\n')
+        .replace(/^\s*---\s*\n?/, '\n');
+      if (next === cleanBody) break;
+      cleanBody = next;
+    }
   }
   cleanBody = cleanBody.replace(/^\n+/, '\n');
   return wrapLongMarkdownLines(cleanBody);

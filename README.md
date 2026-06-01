@@ -122,6 +122,9 @@ bun run cleanup-apply --execute --approve fix-title:web/garry-tan-on-x-resolvers
 `cleanup-apply` dry-runs by default. On `--execute`, every write/delete needs
 an exact `--approve action:slug` token. Applied changes create local backups in
 `.cleanup-backups/` and append an audit record to `.cleanup-actions.jsonl`.
+For duplicate merges, it also verifies that quoted/highlight evidence from the
+delete candidate exists in the keep candidate; unverified duplicate deletes are
+blocked even when approved.
 
 ## Dashboard
 

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  addDuplicateSafetyChecks,
   buildApplyOperations,
   filterApplyOperations,
   formatCleanupApplySummary,
@@ -7,6 +8,7 @@ import {
   summarizeApplyResults,
   updateMarkdownTitle,
   validateApprovals,
+  verifyDuplicateDeleteSafety,
 } from '../cleanup-apply.ts';
 import type { CleanupPlan } from '../cleanup-plan.ts';
 
@@ -111,6 +113,92 @@ describe('cleanup apply helpers', () => {
     expect(formatCleanupApplySummary(summary)).toContain('ClipBrain cleanup apply dry run');
     expect(formatCleanupApplySummary(summary)).toContain('pending_approval delete:web/test-article');
     expect(formatCleanupApplySummary(summary)).toContain('To execute, rerun with --execute');
+  });
+
+  test('verifies duplicate deletes by checking quoted evidence coverage', () => {
+    const deleteMarkdown = [
+      '---',
+      'title: "Delete"',
+      'processed_at: 2026-04-15T00:00:00.000Z',
+      '---',
+      '',
+      '## Summary',
+      '',
+      'Generated text.',
+      '',
+      '---',
+      '',
+      '## Highlights',
+      '',
+      '> Same duplicate quote. (Page 1)',
+      '> Another duplicate quote. (Location 42)',
+    ].join('\n');
+    const keepMarkdown = [
+      '---',
+      'title: "Keep"',
+      'processed_at: 2026-06-01T00:00:00.000Z',
+      '---',
+      '',
+      '## Summary',
+      '',
+      'Generated text.',
+      '',
+      '---',
+      '',
+      '## Highlights',
+      '',
+      '> Same duplicate quote.',
+      '> Another duplicate quote.',
+      '> Extra duplicate quote.',
+    ].join('\n');
+
+    expect(verifyDuplicateDeleteSafety(deleteMarkdown, keepMarkdown)).toEqual(expect.objectContaining({
+      status: 'verified_duplicate',
+      evidenceCount: 2,
+      missingEvidenceCount: 0,
+    }));
+  });
+
+  test('flags duplicate deletes that contain missing quoted evidence', () => {
+    const check = verifyDuplicateDeleteSafety(
+      '---\ntitle: "Delete"\n---\n\n> Unique quote.\n',
+      '---\ntitle: "Keep"\n---\n\n> Different quote.\n',
+    );
+
+    expect(check).toEqual(expect.objectContaining({
+      status: 'needs_review',
+      missingEvidenceCount: 1,
+      missingSamples: ['Unique quote.'],
+    }));
+  });
+
+  test('normalizes duplicate evidence with diacritics', () => {
+    const check = verifyDuplicateDeleteSafety(
+      '---\ntitle: "Delete"\n---\n\n> Café útil para acción rápida.\n',
+      '---\ntitle: "Keep"\n---\n\n> Cafe util para accion rapida.\n',
+    );
+
+    expect(check).toEqual(expect.objectContaining({
+      status: 'verified_duplicate',
+      evidenceCount: 1,
+      missingEvidenceCount: 0,
+    }));
+  });
+
+  test('formats duplicate safety in apply summaries', () => {
+    const operations = addDuplicateSafetyChecks(buildApplyOperations(planFixture()), {
+      'web/garry-tan-on-x': '---\ntitle: "Delete"\n---\n\n> Same duplicate quote.\n',
+      'web/garry-tan-on-x-resolvers-the-routing-table-for-intelligence-x': '---\ntitle: "Keep"\n---\n\n> Same duplicate quote.\n',
+    });
+    const operation = operations.find(op => op.sourceAction === 'merge_duplicate')!;
+    const summary = summarizeApplyResults({
+      dryRun: true,
+      scanned: 3,
+      results: [{ operation, status: 'pending_approval' }],
+    });
+
+    expect(formatCleanupApplySummary(summary))
+      .toContain('safety=verified_duplicate evidence=1');
   });
 });
 

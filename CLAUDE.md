@@ -75,6 +75,9 @@ The backfill targets ClipBrain slugs (`kindle/`, `web/`, `pdf/`, `youtube/`, `em
 Use `bun run corpus` for a read-only corpus quality report. It flags likely
 test captures, Kindle import artifacts, truncated titles, duplicate title
 groups, and pages still pending backfill.
+`cleanup-apply --action merge_duplicate` dry-runs duplicate deletes with a
+quoted/highlight evidence safety check. `--execute` still requires exact
+approval tokens and blocks merge deletes whose evidence is not verified.
 
 ## Setup
 

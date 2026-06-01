@@ -4,6 +4,7 @@ import {
   buildCleanupPlan,
   loadMarkdownBySlug,
 } from './cleanup-plan.ts';
+import { cleanSourceBody } from './post-process.ts';
 import type {
   CleanupAction,
   CleanupConfidence,
@@ -15,6 +16,16 @@ import { loadCorpusItems } from './corpus-report.ts';
 export type CleanupApplyAction = 'delete' | 'fix-title';
 export type CleanupApplyStatus = 'pending_approval' | 'approved_dry_run' | 'applied' | 'failed' | 'skipped';
 
+export type DuplicateSafetyStatus = 'not_applicable' | 'verified_duplicate' | 'needs_review';
+
+export type DuplicateSafetyCheck = {
+  status: DuplicateSafetyStatus;
+  evidenceCount: number;
+  missingEvidenceCount: number;
+  missingSamples: string[];
+  reason: string;
+};
+
 export type CleanupApplyOperation = {
   action: CleanupApplyAction;
   approval: string;
@@ -24,6 +35,7 @@ export type CleanupApplyOperation = {
   reason: string;
   keepSlug?: string;
   suggestedTitle?: string;
+  duplicateSafety?: DuplicateSafetyCheck;
 };
 
 export type CleanupApplyOptions = {
@@ -146,6 +158,71 @@ export function validateApprovals(operations: CleanupApplyOperation[], approvals
   }
 }
 
+export function verifyDuplicateDeleteSafety(deleteMarkdown: string, keepMarkdown: string): DuplicateSafetyCheck {
+  const deleteEvidence = extractQuotedEvidence(deleteMarkdown);
+  const keepEvidence = new Set(extractQuotedEvidence(keepMarkdown).map(item => item.normalized));
+
+  if (deleteEvidence.length > 0) {
+    const missing = deleteEvidence.filter(item => !keepEvidence.has(item.normalized));
+    return {
+      status: missing.length === 0 ? 'verified_duplicate' : 'needs_review',
+      evidenceCount: deleteEvidence.length,
+      missingEvidenceCount: missing.length,
+      missingSamples: missing.slice(0, 3).map(item => item.display),
+      reason: missing.length === 0
+        ? 'All quoted/highlight evidence from the delete candidate is present in the keep candidate.'
+        : 'Delete candidate has quoted/highlight evidence that was not found in the keep candidate.',
+    };
+  }
+
+  const deleteBody = normalizeBodyForCompare(cleanSourceBody(deleteMarkdown));
+  const keepBody = normalizeBodyForCompare(cleanSourceBody(keepMarkdown));
+  if (deleteBody && keepBody && (deleteBody === keepBody || keepBody.includes(deleteBody))) {
+    return {
+      status: 'verified_duplicate',
+      evidenceCount: 0,
+      missingEvidenceCount: 0,
+      missingSamples: [],
+      reason: 'No quoted/highlight evidence found, but normalized source body is contained in the keep candidate.',
+    };
+  }
+
+  return {
+    status: 'needs_review',
+    evidenceCount: 0,
+    missingEvidenceCount: 0,
+    missingSamples: [],
+    reason: 'No quoted/highlight evidence found; manual review is required before deleting.',
+  };
+}
+
+export function addDuplicateSafetyChecks(
+  operations: CleanupApplyOperation[],
+  markdownBySlug: Record<string, string>
+): CleanupApplyOperation[] {
+  return operations.map(operation => {
+    if (operation.action !== 'delete' || operation.sourceAction !== 'merge_duplicate' || !operation.keepSlug) {
+      return {
+        ...operation,
+        duplicateSafety: {
+          status: 'not_applicable',
+          evidenceCount: 0,
+          missingEvidenceCount: 0,
+          missingSamples: [],
+          reason: 'Duplicate safety check only applies to merge_duplicate delete operations.',
+        },
+      };
+    }
+
+    const deleteMarkdown = markdownBySlug[operation.slug] || '';
+    const keepMarkdown = markdownBySlug[operation.keepSlug] || '';
+    return {
+      ...operation,
+      duplicateSafety: verifyDuplicateDeleteSafety(deleteMarkdown, keepMarkdown),
+    };
+  });
+}
+
 export function updateMarkdownTitle(markdown: string, title: string): string {
   const lines = markdown.split('\n');
   if (lines[0]?.trim() !== '---') {
@@ -218,7 +295,10 @@ export async function runCleanupApply(
   const items = await loadCorpusItems(opts.listLimit);
   const markdownBySlug = await loadMarkdownBySlug(items);
   const plan = buildCleanupPlan(items, markdownBySlug);
-  const selected = filterApplyOperations(buildApplyOperations(plan), opts);
+  const selected = addDuplicateSafetyChecks(
+    filterApplyOperations(buildApplyOperations(plan), opts),
+    markdownBySlug,
+  );
   validateApprovals(selected, opts.approvals);
 
   const approvalSet = new Set(opts.approvals);
@@ -243,6 +323,9 @@ export async function runCleanupApply(
     }
 
     try {
+      const duplicateSafetyError = getDuplicateSafetyBlockReason(operation);
+      if (duplicateSafetyError) throw new Error(duplicateSafetyError);
+
       const before = markdownBySlug[operation.slug] || await gbrain.get(operation.slug);
       const backupPath = await writeBackup(backupDir, operation.slug, before);
 
@@ -349,8 +432,9 @@ export function formatCleanupApplySummary(summary: CleanupApplySummary): string 
       const op = result.operation;
       const title = op.suggestedTitle ? ` title="${op.suggestedTitle}"` : '';
       const keep = op.keepSlug ? ` keep=${op.keepSlug}` : '';
+      const safety = formatDuplicateSafety(op.duplicateSafety);
       const error = result.error ? ` error="${result.error}"` : '';
-      lines.push(`- ${result.status} ${op.approval} [${op.confidence}/${op.sourceAction}]${keep}${title}${error}`);
+      lines.push(`- ${result.status} ${op.approval} [${op.confidence}/${op.sourceAction}]${keep}${title}${safety}${error}`);
     }
   }
 
@@ -428,6 +512,76 @@ function parseApplyAction(raw: string): CleanupApplyAction {
   if (raw === 'delete') return 'delete';
   if (raw === 'fix-title' || raw === 'fix_title') return 'fix-title';
   throw new Error('--approve action must be delete or fix-title');
+}
+
+function getDuplicateSafetyBlockReason(operation: CleanupApplyOperation): string | null {
+  if (operation.action !== 'delete' || operation.sourceAction !== 'merge_duplicate') return null;
+  if (operation.duplicateSafety?.status === 'verified_duplicate') return null;
+
+  const check = operation.duplicateSafety;
+  if (!check) return 'merge_duplicate safety check did not run';
+  const sample = check.missingSamples.length > 0 ? ` Missing sample: ${check.missingSamples[0]}` : '';
+  return `${check.reason}${sample}`;
+}
+
+function formatDuplicateSafety(check: DuplicateSafetyCheck | undefined): string {
+  if (!check || check.status === 'not_applicable') return '';
+  const missing = check.missingEvidenceCount > 0 ? ` missing=${check.missingEvidenceCount}` : '';
+  return ` safety=${check.status} evidence=${check.evidenceCount}${missing}`;
+}
+
+function extractQuotedEvidence(markdown: string): Array<{ normalized: string; display: string }> {
+  const body = cleanSourceBody(markdown);
+  const seen = new Set<string>();
+  const evidence: Array<{ normalized: string; display: string }> = [];
+
+  for (const line of body.split('\n')) {
+    const match = line.match(/^\s*>\s*(.+)$/);
+    if (!match) continue;
+
+    const display = cleanEvidenceDisplay(match[1]);
+    const normalized = normalizeEvidence(display);
+    if (!normalized || seen.has(normalized)) continue;
+
+    seen.add(normalized);
+    evidence.push({ normalized, display });
+  }
+
+  return evidence;
+}
+
+function cleanEvidenceDisplay(value: string): string {
+  return value
+    .replace(/\s+\((?:Page|Location)\s+[^)]*\)\s*$/i, '')
+    .replace(/^[“”"']+|[“”"']+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeEvidence(value: string): string {
+  const cleaned = cleanEvidenceDisplay(value)
+    .normalize('NFKD')
+    .replace(/\p{Mark}+/gu, '')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+  return cleaned.length >= 12 ? cleaned : '';
+}
+
+function normalizeBodyForCompare(value: string): string {
+  return value
+    .replace(/<!--\s*timeline\s*-->/gi, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .normalize('NFKD')
+    .replace(/\p{Mark}+/gu, '')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function parsePositiveInt(value: string, label: string): number {
