@@ -4,6 +4,7 @@ import {
   classifyCorpusIssues,
   countKnowledgeAtoms,
   findDuplicateGroups,
+  mergeUniqueGbrainListItems,
   normalizeCorpusTitle,
 } from '../corpus-report.ts';
 import type { CorpusItem } from '../corpus-report.ts';
@@ -76,6 +77,26 @@ describe('corpus report helpers', () => {
     expect(report.scanned).toBe(2);
     expect(report.issueCount).toBe(1);
     expect(report.backfillPending).toBe(1);
+  });
+
+  test('merges fallback gbrain list outputs by slug', () => {
+    const items = mergeUniqueGbrainListItems([
+      [
+        'kindle/deep-work\treference\t2026-01-01\tDeep Work',
+        'web/article\tnote\t2026-01-02\tArticle',
+      ].join('\n'),
+      [
+        'kindle/deep-work\tnote\t2026-01-03\tDeep Work Duplicate',
+        'pdf/paper\tnote\t2026-01-04\tPaper',
+      ].join('\n'),
+    ]);
+
+    expect(items.map(item => item.slug)).toEqual([
+      'kindle/deep-work',
+      'web/article',
+      'pdf/paper',
+    ]);
+    expect(items[0].title).toBe('Deep Work');
   });
 });
 

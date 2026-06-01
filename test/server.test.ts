@@ -610,6 +610,19 @@ describe('HTTP server', () => {
     expect(body.candidates).toEqual([]);
   });
 
+  test('POST /api/reprocess-all accepts JSON dry-run params', async () => {
+    const res = await fetch(`${BASE}/api/reprocess-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dry_run: true, limit: 5 }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe('dry_run');
+    expect(body.limit).toBe(5);
+    expect(body.queued).toBe(0);
+  });
+
   test('POST /api/reprocess-all requires OpenAI credentials when applying', async () => {
     const res = await fetch(`${BASE}/api/reprocess-all`, { method: 'POST' });
     expect(res.status).toBe(400);

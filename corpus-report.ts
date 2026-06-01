@@ -1,5 +1,8 @@
 import { getBackfillReason, parseFrontmatter } from './post-process.ts';
 import { isClipBrainSlug, parseGbrainList } from './backfill.ts';
+import type { BackfillListItem } from './backfill.ts';
+
+const FALLBACK_GBRAIN_TYPES = ['reference', 'note'];
 
 export type CorpusItem = {
   slug: string;
@@ -129,9 +132,33 @@ export function formatCorpusReport(report: CorpusReport): string {
   return lines.join('\n');
 }
 
+export function mergeUniqueGbrainListItems(outputs: string[]): BackfillListItem[] {
+  const bySlug = new Map<string, BackfillListItem>();
+
+  for (const output of outputs) {
+    for (const item of parseGbrainList(output)) {
+      if (!item.slug || bySlug.has(item.slug)) continue;
+      bySlug.set(item.slug, item);
+    }
+  }
+
+  return [...bySlug.values()];
+}
+
+async function loadGbrainListItems(listLimit: number): Promise<BackfillListItem[]> {
+  try {
+    return mergeUniqueGbrainListItems([await gbrainExec(['list', '--limit', String(listLimit)])]);
+  } catch (err) {
+    const outputs: string[] = [];
+    for (const type of FALLBACK_GBRAIN_TYPES) {
+      outputs.push(await gbrainExec(['list', '--type', type, '--limit', String(listLimit)]));
+    }
+    return mergeUniqueGbrainListItems(outputs);
+  }
+}
+
 export async function loadCorpusItems(listLimit: number): Promise<CorpusItem[]> {
-  const output = await gbrainExec(['list', '--limit', String(listLimit)]);
-  const items = parseGbrainList(output).filter(item => isClipBrainSlug(item.slug));
+  const items = (await loadGbrainListItems(listLimit)).filter(item => isClipBrainSlug(item.slug));
   const result: CorpusItem[] = [];
 
   for (const item of items) {

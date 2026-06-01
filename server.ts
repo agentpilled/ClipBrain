@@ -971,6 +971,22 @@ function parseGbrainOutput(output: string, limit: number): Array<Record<string, 
   return results;
 }
 
+function mergeGbrainListOutputs(outputs: string[]): string {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+
+  for (const output of outputs) {
+    for (const line of output.trim().split('\n').filter(Boolean)) {
+      const slug = line.split('\t')[0]?.trim();
+      if (!slug || seen.has(slug)) continue;
+      seen.add(slug);
+      lines.push(line);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Obsidian vault sync
 // ---------------------------------------------------------------------------
@@ -1460,14 +1476,70 @@ async function handleGraph(): Promise<Response> {
 // Reprocess all endpoint
 // ---------------------------------------------------------------------------
 
+type ReprocessParams = {
+  dryRun: boolean;
+  force: boolean;
+  sync: boolean;
+  limit: number;
+  exactSlug: string;
+  type: string;
+  slugPrefix: string;
+};
+
+async function parseReprocessParams(req: Request, url: URL): Promise<ReprocessParams> {
+  let body: Record<string, any> = {};
+  const contentType = req.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      const parsed = await req.json();
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) body = parsed;
+    } catch {
+      body = {};
+    }
+  }
+
+  const param = (queryName: string, ...bodyNames: string[]) => {
+    const fromQuery = url.searchParams.get(queryName);
+    if (fromQuery !== null) return fromQuery;
+    for (const name of bodyNames) {
+      const value = body[name];
+      if (value !== undefined && value !== null) return String(value);
+    }
+    return '';
+  };
+
+  return {
+    dryRun: parseBooleanParam(param('dry_run', 'dry_run', 'dryRun')),
+    force: parseBooleanParam(param('force', 'force')),
+    sync: parseBooleanParam(param('sync', 'sync', 'await_processing', 'awaitProcessing')),
+    limit: clampNumber(parseInt(param('limit', 'limit') || '10', 10), 1, 100),
+    exactSlug: param('slug', 'slug').trim(),
+    type: param('type', 'type').trim().toLowerCase(),
+    slugPrefix: param('slug_prefix', 'slug_prefix', 'slugPrefix').trim(),
+  };
+}
+
+function parseBooleanParam(value: string): boolean {
+  return value === 'true' || value === '1' || value === 'yes';
+}
+
+async function listPagesForReprocess(): Promise<string> {
+  try {
+    return await gbrainExec(['list', '--limit', '10000']);
+  } catch (err: any) {
+    console.warn(`[reprocess-all] full gbrain list failed, falling back to type scans: ${err?.message || String(err)}`);
+    const outputs = await Promise.all([
+      gbrainExec(['list', '--type', 'reference', '--limit', '10000']),
+      gbrainExec(['list', '--type', 'note', '--limit', '10000']),
+    ]);
+    return mergeGbrainListOutputs(outputs);
+  }
+}
+
 async function handleReprocessAll(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const dryRun = url.searchParams.get('dry_run') === 'true';
-  const force = url.searchParams.get('force') === 'true';
-  const limit = clampNumber(parseInt(url.searchParams.get('limit') || '10', 10), 1, 100);
-  const exactSlug = (url.searchParams.get('slug') || '').trim();
-  const type = (url.searchParams.get('type') || '').trim().toLowerCase();
-  const slugPrefix = (url.searchParams.get('slug_prefix') || '').trim();
+  const { dryRun, force, sync, limit, exactSlug, type, slugPrefix } = await parseReprocessParams(req, url);
   const allowedTypes = new Set(['kindle', 'web', 'pdf', 'youtube', 'email']);
 
   if (exactSlug && !['kindle/', 'web/', 'pdf/', 'youtube/', 'email/'].some(prefix => exactSlug.startsWith(prefix))) {
@@ -1487,13 +1559,14 @@ async function handleReprocessAll(req: Request): Promise<Response> {
   }
 
   try {
-    const output = await gbrainExec(['list', '--limit', '10000']);
+    const output = await listPagesForReprocess();
     const lines = output.trim().split('\n').filter(Boolean);
 
     const candidates: Array<{ slug: string; title: string; type: string; reason: string }> = [];
     let scanned = 0;
     let skipped = 0;
     let failed = 0;
+    let processed = 0;
 
     for (const line of lines) {
       const parts = line.split('\t');
@@ -1522,9 +1595,19 @@ async function handleReprocessAll(req: Request): Promise<Response> {
         candidates.push(candidate);
 
         if (!dryRun) {
-          postProcess(slug, content, true).catch(err => {
-            console.warn(`[reprocess-all] failed for ${slug}:`, err.message);
-          });
+          if (sync) {
+            try {
+              await postProcess(slug, content, true);
+              processed++;
+            } catch (err: any) {
+              failed++;
+              console.warn(`[reprocess-all] failed for ${slug}:`, err.message);
+            }
+          } else {
+            postProcess(slug, content, true).catch(err => {
+              console.warn(`[reprocess-all] failed for ${slug}:`, err.message);
+            });
+          }
         }
       } catch (err: any) {
         failed++;
@@ -1534,15 +1617,17 @@ async function handleReprocessAll(req: Request): Promise<Response> {
       if (candidates.length >= limit) break;
     }
 
-    return corsResponse(dryRun ? 200 : 202, {
-      status: dryRun ? 'dry_run' : 'started',
+    return corsResponse(dryRun || sync ? 200 : 202, {
+      status: dryRun ? 'dry_run' : sync ? 'completed' : 'started',
       compilerVersion: KNOWLEDGE_COMPILER_VERSION,
       queued: dryRun ? 0 : candidates.length,
+      processed,
       scanned,
       skipped,
       failed,
       limit,
       force,
+      sync,
       candidates,
     });
   } catch (err: any) {
