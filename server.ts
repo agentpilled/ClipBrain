@@ -1950,7 +1950,7 @@ async function handleDiagnostics(): Promise<Response> {
     gbrainOk = true;
     // Get total count from stats
     try {
-      const statsOutput = await gbrainExec(['list', '--limit', '10000']);
+      const statsOutput = await listPagesForReprocess();
       captures = parseGbrainOutput(statsOutput, 10000).filter(i =>
         i.slug?.startsWith('kindle/') ||
         i.slug?.startsWith('web/') ||
