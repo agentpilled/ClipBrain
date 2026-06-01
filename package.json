@@ -9,6 +9,7 @@
     "backfill": "bun run backfill.ts",
     "corpus": "bun run corpus-report.ts",
     "cleanup-plan": "bun run cleanup-plan.ts",
+    "cleanup-apply": "bun run cleanup-apply.ts",
     "mcp": "bun run clipbrain-mcp.ts",
     "serve": "bun run server.ts",
     "serve:bg": "bun run server.ts &",

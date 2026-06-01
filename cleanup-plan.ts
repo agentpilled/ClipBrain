@@ -24,7 +24,7 @@ export type CleanupPlan = {
   recommendations: CleanupRecommendation[];
 };
 
-type MarkdownBySlug = Record<string, string>;
+export type MarkdownBySlug = Record<string, string>;
 
 export function buildCleanupPlan(items: CorpusItem[], markdownBySlug: MarkdownBySlug): CleanupPlan {
   const recommendations: CleanupRecommendation[] = [];
@@ -277,7 +277,7 @@ function truncate(value: string, maxLength: number): string {
   return `${clean.slice(0, maxLength - 3)}...`;
 }
 
-async function loadMarkdownBySlug(items: CorpusItem[]): Promise<MarkdownBySlug> {
+export async function loadMarkdownBySlug(items: CorpusItem[]): Promise<MarkdownBySlug> {
   const markdownBySlug: MarkdownBySlug = {};
   for (const item of items) {
     markdownBySlug[item.slug] = await gbrainGet(item.slug);

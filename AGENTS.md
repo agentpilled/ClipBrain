@@ -17,6 +17,7 @@ Important files:
 - `backfill.ts`: controlled Knowledge Compiler backfill for legacy captures
 - `corpus-report.ts`: read-only corpus quality report for junk/duplicate audit
 - `cleanup-plan.ts`: read-only cleanup recommendations; never deletes or writes
+- `cleanup-apply.ts`: explicit approval-gated cleanup executor with backups/logs
 - `service-worker.js`: MV3 background worker, capture dispatch, offline queue
 - `content-script.js`, `kindle-content-script.js`, `gmail-content-script.js`: page extractors
 - `post-process.ts`: optional OpenAI enrichment after a capture is saved
@@ -38,14 +39,18 @@ Important files:
   `PATH`.
 - `package-lock.json` is intentionally absent. This repo uses `bun.lock`.
 - Runtime data files such as `.captures.jsonl`, `.highlight-count`,
-  `.highlight-counts.json`, and `.clipbrain.json` must stay out of commits.
-  Tests should use `CLIPBRAIN_DATA_DIR` for isolated state.
+  `.highlight-counts.json`, `.clipbrain.json`, `.cleanup-actions.jsonl`, and
+  `.cleanup-backups/` must stay out of commits. Tests should use
+  `CLIPBRAIN_DATA_DIR` for isolated state.
 - Use `bun run backfill --limit N` for a dry-run before applying compiler
   upgrades with `bun run backfill --apply --limit N`.
 - Use `bun run corpus` to inspect likely junk, duplicate titles, and pending
   compiler upgrades. It is read-only.
 - Use `bun run cleanup-plan` to turn the corpus audit into a read-only
   keep/delete/merge/title-fix proposal before any manual cleanup.
+- Use `bun run cleanup-apply` for a dry-run of executable cleanup operations.
+  Never run it with `--execute` unless the user has approved exact
+  `--approve action:slug` tokens.
 
 ## Security Boundaries
 

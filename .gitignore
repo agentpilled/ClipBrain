@@ -5,5 +5,7 @@ bin/*
 .highlight-count*
 .clipbrain.json
 .captures.jsonl
+.cleanup-actions.jsonl
+.cleanup-backups/
 .mailmap-rewrite
 test-new-*

@@ -105,6 +105,19 @@ bun run cleanup-plan
 `cleanup-plan` turns that audit into read-only delete/merge/title-fix
 recommendations; it never writes to gbrain.
 
+Cleanup execution is intentionally separate and approval-scoped:
+
+```bash
+bun run cleanup-apply
+bun run cleanup-apply --action delete
+bun run cleanup-apply --execute --approve delete:web/test-article
+bun run cleanup-apply --execute --approve fix-title:web/garry-tan-on-x-resolvers-the-routing-table-for-intelligence-x
+```
+
+`cleanup-apply` dry-runs by default. On `--execute`, every write/delete needs
+an exact `--approve action:slug` token. Applied changes create local backups in
+`.cleanup-backups/` and append an audit record to `.cleanup-actions.jsonl`.
+
 ## Dashboard
 
 Open **http://127.0.0.1:19285** to browse your knowledge base.
