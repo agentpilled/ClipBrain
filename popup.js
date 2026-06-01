@@ -1,6 +1,6 @@
 // ClipBrain Popup — vanilla JS
 
-const API_BASE = "http://localhost:19285";
+const API_BASE = "http://127.0.0.1:19285";
 
 // ─── DOM refs ────────────────────────────────────────────────────────
 const $onboarding = document.getElementById("onboarding");

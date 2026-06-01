@@ -4,7 +4,7 @@
 
 A Chrome extension (Manifest V3) that captures web page content and sends it to a local HTTP server, which stores it in a ClipBrain knowledge base via the `gbrain` CLI.
 
-This project is self-contained: gbrain is pulled as a git dependency and built locally by `./setup.sh`. No global install required.
+This project uses the installed `gbrain` CLI. `./setup.sh` installs it globally with Bun if it is missing.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ A standalone Bun HTTP server that:
 - Handles CORS for chrome-extension:// origins
 - Appends every capture to `.captures.jsonl` (append-only, gitignored) and exposes `GET /api/digest?since=ISO|days=N` — returns captures since a date grouped by type (kindle/web/youtube/email/pdf) plus a Slack-friendly markdown summary. Kindle entries include `newHighlights` (delta vs previous capture).
 
-The server resolves the gbrain binary in this order: `GBRAIN_BIN` env var, `./bin/gbrain` (local build from setup.sh), then `gbrain` on PATH (global fallback).
+The server resolves the gbrain binary in this order: `GBRAIN_BIN` env var, then `gbrain` on `PATH`.
 
 ### Post-Processing (post-process.ts)
 
@@ -50,7 +50,7 @@ Post-processing is fire-and-forget: failures never affect the capture flow. If `
 ## Setup
 
 ```bash
-./setup.sh        # installs deps, builds gbrain, initializes database, auto-starts server via launchd
+./setup.sh        # installs deps, ensures gbrain CLI, initializes database, auto-starts server via launchd
 ```
 
 The server auto-starts on login via launchd. To manually start: `bun run serve`

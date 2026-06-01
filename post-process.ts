@@ -40,13 +40,26 @@ async function loadConfig(): Promise<ProcessingConfig | null> {
 function resolveGbrainCommand(): string[] {
   if (process.env.GBRAIN_BIN) return [process.env.GBRAIN_BIN];
 
-  const gbrainSrc = import.meta.dir + '/node_modules/gbrain/src/cli.ts';
-  if (require('fs').existsSync(gbrainSrc)) return ['bun', 'run', gbrainSrc];
-
-  const localBin = import.meta.dir + '/bin/gbrain';
-  if (require('fs').existsSync(localBin)) return [localBin];
+  const pathGbrain = findExecutableOnPath('gbrain');
+  if (pathGbrain) return [pathGbrain];
 
   return ['gbrain'];
+}
+
+function findExecutableOnPath(command: string): string | null {
+  const fs = require('fs');
+  const path = require('path');
+  const dirs = (process.env.PATH || '').split(':').filter(Boolean);
+  for (const dir of dirs) {
+    const fullPath = path.join(dir, command);
+    try {
+      fs.accessSync(fullPath, fs.constants.X_OK);
+      return fullPath;
+    } catch {
+      // Continue scanning PATH.
+    }
+  }
+  return null;
 }
 
 async function gbrainExec(args: string[]): Promise<string> {

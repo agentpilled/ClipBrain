@@ -5,7 +5,7 @@
   "family": "bundle-plugin",
   "mcpServers": {
     "gbrain": {
-      "command": "./bin/gbrain",
+      "command": "gbrain",
       "args": ["serve"]
     }
   },

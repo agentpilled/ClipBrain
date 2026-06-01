@@ -15,7 +15,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/luca/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/luca/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
         <string>/Users/luca</string>
     </dict>
@@ -27,7 +27,7 @@
     <true/>
 
     <key>WorkingDirectory</key>
-    <string>/Users/luca/Desktop/gbrain-capture</string>
+    <string>/Users/luca/Desktop/ClipBrain</string>
 
     <key>StandardOutPath</key>
     <string>/Users/luca/Library/Logs/gbrain-capture.log</string>

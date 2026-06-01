@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
-    "gbrain": "github:garrytan/gbrain",
     "pdf-parse": "^2.4.5"
   }
 }

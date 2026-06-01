@@ -1,9 +1,9 @@
 // ClipBrain — MV3 Service Worker
 // Receives extracted content from content script, POSTs to ClipBrain server, manages offline queue.
 
-const GBRAIN_URL = "http://localhost:19285/api/capture";
-const GBRAIN_YOUTUBE_URL = "http://localhost:19285/api/capture-youtube";
-const GBRAIN_STATS_URL = "http://localhost:19285/api/stats";
+const GBRAIN_URL = "http://127.0.0.1:19285/api/capture";
+const GBRAIN_YOUTUBE_URL = "http://127.0.0.1:19285/api/capture-youtube";
+const GBRAIN_STATS_URL = "http://127.0.0.1:19285/api/stats";
 const QUEUE_KEY = "captureQueue";
 const CAPTURE_COUNT_KEY = "captureCount";
 const MAX_QUEUE = 100;
@@ -329,10 +329,14 @@ async function flushQueue() {
   const remaining = [];
   for (const item of queue) {
     try {
-      const resp = await fetch(GBRAIN_URL, {
+      const isYouTube = item._type === "youtube";
+      const payload = { ...item };
+      delete payload._type;
+
+      const resp = await fetch(isYouTube ? GBRAIN_YOUTUBE_URL : GBRAIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item),
+        body: JSON.stringify(payload),
       });
       if (!resp.ok && resp.status !== 202) {
         remaining.push(item);

@@ -36,7 +36,7 @@ cd clipbrain
 ./setup.sh
 ```
 
-This single command installs dependencies, builds the knowledge engine, creates a local database, auto-configures your AI tools, connects to Obsidian (if installed), and starts a background service.
+This single command installs dependencies, ensures the `gbrain` CLI is available, creates a local database, auto-configures your AI tools, connects to Obsidian (if installed), and starts a background service.
 
 Then load the Chrome extension:
 
@@ -74,7 +74,7 @@ Works with **Claude Code**, **OpenClaw**, **Claude Desktop**, **Cursor**, and an
 
 ## Dashboard
 
-Open **http://localhost:19285** to browse your knowledge base.
+Open **http://127.0.0.1:19285** to browse your knowledge base.
 
 - Filter by books, articles, PDFs, videos
 - Search across everything
@@ -113,7 +113,7 @@ Everything runs locally. No data leaves your machine except for generating embed
 
 - [Bun](https://bun.sh)
 - Chrome or Chromium
-- `OPENAI_API_KEY` environment variable (for embeddings and AI processing)
+- `OPENAI_API_KEY` environment variable (optional, for AI processing)
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) (optional, for YouTube transcripts)
 - Obsidian (optional, for vault sync)
 

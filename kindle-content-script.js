@@ -679,9 +679,9 @@
       textDecoration: "none",
       fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
     });
-    dashBox.href = "http://localhost:19285";
+    dashBox.href = "http://127.0.0.1:19285";
     dashBox.target = "_blank";
-    dashBox.textContent = "localhost:19285";
+    dashBox.textContent = "127.0.0.1:19285";
     dashBox.addEventListener("mouseenter", () => dashBox.style.borderColor = "#4ade80");
     dashBox.addEventListener("mouseleave", () => dashBox.style.borderColor = "#333");
     dashboardLink.appendChild(dashBox);

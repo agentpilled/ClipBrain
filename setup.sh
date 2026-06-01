@@ -21,17 +21,31 @@ fi
 echo "→ Installing dependencies..."
 bun install
 
-# ─── Step 2: Build gbrain engine ──────────────────────────────────────────────
-echo "→ Building gbrain engine..."
-cd node_modules/gbrain
-bun install
-bun build --compile --outfile ../../bin/gbrain src/cli.ts
-cd "$SCRIPT_DIR"
+# ─── Step 2: Ensure gbrain CLI ────────────────────────────────────────────────
+echo "→ Checking gbrain CLI..."
+if ! command -v gbrain &>/dev/null; then
+  echo "  → Installing gbrain CLI..."
+  bun install --global github:garrytan/gbrain
+fi
+
+if ! command -v gbrain &>/dev/null; then
+  echo "  ✗ Could not find gbrain after installation."
+  echo "    Make sure Bun's global bin directory is on PATH, then re-run ./setup.sh"
+  exit 1
+fi
+
+GBRAIN_PATH="$(command -v gbrain)"
+GBRAIN_VERSION="$("$GBRAIN_PATH" version 2>/dev/null || "$GBRAIN_PATH" --version 2>/dev/null || true)"
+if [ -n "$GBRAIN_VERSION" ]; then
+  echo "  ✓ gbrain CLI ($GBRAIN_VERSION)"
+else
+  echo "  ✓ gbrain CLI ($GBRAIN_PATH)"
+fi
 
 # ─── Step 3: Initialize gbrain database ──────────────────────────────────────
 if [ ! -f ~/.gbrain/config.json ]; then
   echo "→ Initializing ClipBrain database..."
-  ./bin/gbrain init
+  "$GBRAIN_PATH" init
 else
   echo "→ ClipBrain already initialized ✓"
 fi
@@ -40,7 +54,8 @@ fi
 echo ""
 echo "→ Configuring AI connection..."
 
-CLI_TS_PATH="$SCRIPT_DIR/node_modules/gbrain/src/cli.ts"
+MCP_COMMAND="$GBRAIN_PATH"
+MCP_ARGS_JSON="[\"serve\"]"
 
 # Auto-detect which AI tools are installed
 HAS_CLAUDE=false
@@ -66,8 +81,8 @@ merge_mcp_json() {
 {
   "mcpServers": {
     "gbrain": {
-      "command": "bun",
-      "args": ["run", "$CLI_TS_PATH", "serve"]
+      "command": "$MCP_COMMAND",
+      "args": $MCP_ARGS_JSON
     }
   }
 }
@@ -80,24 +95,24 @@ JSONEOF
   if command -v jq &>/dev/null; then
     local TMP
     TMP=$(mktemp)
-    jq --arg cli "$CLI_TS_PATH" '
+    jq --arg command "$MCP_COMMAND" --argjson args "$MCP_ARGS_JSON" '
       .mcpServers = (.mcpServers // {}) |
       .mcpServers.gbrain = {
-        "command": "bun",
-        "args": ["run", $cli, "serve"]
+        "command": $command,
+        "args": $args
       }
     ' "$FILE" > "$TMP" && mv "$TMP" "$FILE"
   elif command -v python3 &>/dev/null; then
-    python3 - "$FILE" "$CLI_TS_PATH" <<'PYEOF'
+    python3 - "$FILE" "$MCP_COMMAND" "$MCP_ARGS_JSON" <<'PYEOF'
 import json, sys
-filepath, cli_path = sys.argv[1], sys.argv[2]
+filepath, command, args_json = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(filepath, 'r') as f:
     data = json.load(f)
 if 'mcpServers' not in data:
     data['mcpServers'] = {}
 data['mcpServers']['gbrain'] = {
-    "command": "bun",
-    "args": ["run", cli_path, "serve"]
+    "command": command,
+    "args": json.loads(args_json)
 }
 with open(filepath, 'w') as f:
     json.dump(data, f, indent=2)
@@ -283,7 +298,7 @@ if [ "$(uname)" = "Darwin" ]; then
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>$BUN_DIR:/usr/local/bin:/usr/bin:/bin</string>
+        <string>$BUN_DIR:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
         <string>$HOME</string>$OPENAI_ENV_BLOCK
     </dict>
@@ -307,7 +322,7 @@ PLISTEOF
 
   echo "→ Waiting for server to start..."
   for i in $(seq 1 15); do
-    if curl -s --max-time 2 http://localhost:19285/health > /dev/null 2>&1; then
+    if curl -s --max-time 2 http://127.0.0.1:19285/health > /dev/null 2>&1; then
       echo "  ✓ Server running"
       break
     fi
@@ -323,7 +338,7 @@ echo ""
 echo "✅ ClipBrain is ready!"
 echo ""
 echo "  ✓ Dependencies installed"
-echo "  ✓ Knowledge engine built"
+echo "  ✓ gbrain CLI ready"
 echo "  ✓ Database initialized"
 if [ "$(uname)" = "Darwin" ]; then
   echo "  ✓ Server running (auto-starts on login)"
@@ -358,9 +373,9 @@ echo ""
 echo "  Then:"
 echo "    • Cmd+Shift+S on any page to capture"
 echo "    • read.amazon.com/notebook to import Kindle highlights"
-echo "    • Drag PDFs onto localhost:19285"
+echo "    • Drag PDFs onto http://127.0.0.1:19285"
 echo "    • Cmd+Shift+S on YouTube videos for transcripts"
-echo "    • localhost:19285 to browse your brain"
+echo "    • http://127.0.0.1:19285 to browse your brain"
 
 # Open Chrome extensions page for easy loading
 if [ "$(uname)" = "Darwin" ]; then

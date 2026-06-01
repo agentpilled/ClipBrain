@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "description": "Capture web content into your ClipBrain knowledge base",
   "permissions": ["storage", "alarms", "activeTab", "scripting", "tabs"],
-  "host_permissions": ["http://localhost:19285/*"],
+  "host_permissions": [
+    "http://localhost:19285/*",
+    "http://127.0.0.1:19285/*"
+  ],
   "optional_host_permissions": ["https://mail.google.com/*"],
   "background": {
     "service_worker": "service-worker.js"

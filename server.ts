@@ -7,7 +7,13 @@ import { PDFParse } from 'pdf-parse';
 import { postProcess } from './post-process.ts';
 
 const DEFAULT_PORT = 19285;
+const DEFAULT_HOST = '127.0.0.1';
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
+const DATA_DIR = process.env.CLIPBRAIN_DATA_DIR || import.meta.dir;
+
+function dataPath(filename: string): string {
+  return `${DATA_DIR}/${filename}`;
+}
 
 // ---------------------------------------------------------------------------
 // URL helpers
@@ -167,7 +173,7 @@ export function buildEmailMarkdown(opts: {
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-ClipBrain-Token',
 };
 
 function corsResponse(status: number, body: unknown, extra?: Record<string, string>): Response {
@@ -177,6 +183,50 @@ function corsResponse(status: number, body: unknown, extra?: Record<string, stri
   });
 }
 
+export function isAllowedOrigin(origin: string | null | undefined, serverPort = DEFAULT_PORT): boolean {
+  if (!origin) return true;
+  if (origin.startsWith('chrome-extension://')) return true;
+
+  try {
+    const url = new URL(origin);
+    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    return url.protocol === 'http:' &&
+      (url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]') &&
+      port === String(serverPort);
+  } catch {
+    return false;
+  }
+}
+
+function forbiddenResponse(status: number, error: string): Response {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Vary': 'Origin' },
+  });
+}
+
+function rejectDisallowedOrigin(req: Request, serverPort: number): Response | null {
+  const origin = req.headers.get('Origin');
+  if (!isAllowedOrigin(origin, serverPort)) {
+    console.warn(`[security] blocked origin: ${origin}`);
+    return forbiddenResponse(403, 'Origin not allowed');
+  }
+  return null;
+}
+
+export function isAuthorizedRequest(method: string, headers: Headers, token = process.env.CLIPBRAIN_API_TOKEN): boolean {
+  if (!token || method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
+  const auth = headers.get('Authorization') || '';
+  const bearer = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length).trim() : '';
+  const headerToken = headers.get('X-ClipBrain-Token') || '';
+  return bearer === token || headerToken === token;
+}
+
+function rejectUnauthorized(req: Request): Response | null {
+  if (isAuthorizedRequest(req.method, req.headers)) return null;
+  return forbiddenResponse(401, 'Missing or invalid ClipBrain API token');
+}
+
 // ---------------------------------------------------------------------------
 // gbrain CLI integration
 // ---------------------------------------------------------------------------
@@ -184,15 +234,26 @@ function corsResponse(status: number, body: unknown, extra?: Record<string, stri
 function resolveGbrainCommand(): string[] {
   if (process.env.GBRAIN_BIN) return [process.env.GBRAIN_BIN];
 
-  // Prefer running via bun + source (avoids PGLite ENOENT bug in compiled binaries)
-  const gbrainSrc = import.meta.dir + '/node_modules/gbrain/src/cli.ts';
-  if (require('fs').existsSync(gbrainSrc)) return ['bun', 'run', gbrainSrc];
-
-  // Fallback to compiled binary
-  const localBin = import.meta.dir + '/bin/gbrain';
-  if (require('fs').existsSync(localBin)) return [localBin];
+  const pathGbrain = findExecutableOnPath('gbrain');
+  if (pathGbrain) return [pathGbrain];
 
   return ['gbrain'];
+}
+
+function findExecutableOnPath(command: string): string | null {
+  const fs = require('fs');
+  const path = require('path');
+  const dirs = (process.env.PATH || '').split(':').filter(Boolean);
+  for (const dir of dirs) {
+    const fullPath = path.join(dir, command);
+    try {
+      fs.accessSync(fullPath, fs.constants.X_OK);
+      return fullPath;
+    } catch {
+      // Continue scanning PATH.
+    }
+  }
+  return null;
 }
 
 async function gbrainPut(slug: string, markdown: string): Promise<void> {
@@ -208,6 +269,7 @@ async function gbrainPut(slug: string, markdown: string): Promise<void> {
   if (exitCode !== 0) {
     const stderr = await new Response(proc.stderr).text();
     console.error(`[gbrain put] exit ${exitCode}: ${stderr}`);
+    throw new Error(`gbrain put failed: ${stderr || `exit ${exitCode}`}`);
   } else {
     console.log(`[gbrain put] saved ${slug}`);
   }
@@ -279,7 +341,7 @@ async function handleRecent(req: Request): Promise<Response> {
 // Track highlight counts per kindle book in a local JSON file.
 // Returns the delta (new highlights since last capture).
 async function updateHighlightCount(slug: string, count: number): Promise<number> {
-  const trackingFile = import.meta.dir + '/.highlight-counts.json';
+  const trackingFile = dataPath('.highlight-counts.json');
   let data: Record<string, number> = {};
   try {
     data = JSON.parse(await Bun.file(trackingFile).text());
@@ -288,7 +350,7 @@ async function updateHighlightCount(slug: string, count: number): Promise<number
   data[slug] = count;
   const total = Object.values(data).reduce((sum, c) => sum + c, 0);
   await Bun.write(trackingFile, JSON.stringify(data));
-  await Bun.write(import.meta.dir + '/.highlight-count', String(total));
+  await Bun.write(dataPath('.highlight-count'), String(total));
   return Math.max(0, count - prev);
 }
 
@@ -307,7 +369,7 @@ export type CaptureLogEntry = {
 };
 
 async function recordCapture(entry: CaptureLogEntry): Promise<void> {
-  const logFile = import.meta.dir + '/.captures.jsonl';
+  const logFile = dataPath('.captures.jsonl');
   try {
     const fs = await import('node:fs/promises');
     await fs.appendFile(logFile, JSON.stringify(entry) + '\n');
@@ -354,7 +416,7 @@ async function handleStats(): Promise<Response> {
     // Read highlight count from local tracking file (updated on each import)
     let highlights = 0;
     try {
-      const trackingFile = import.meta.dir + '/.highlight-count';
+      const trackingFile = dataPath('.highlight-count');
       const stored = await Bun.file(trackingFile).text();
       highlights = parseInt(stored.trim(), 10) || 0;
     } catch {
@@ -456,7 +518,7 @@ async function handleDigest(req: Request): Promise<Response> {
     sinceDate = new Date(Date.now() - days * 24 * 3600 * 1000);
   }
 
-  const logFile = import.meta.dir + '/.captures.jsonl';
+  const logFile = dataPath('.captures.jsonl');
   let entries: CaptureLogEntry[] = [];
   try {
     const text = await Bun.file(logFile).text();
@@ -580,7 +642,7 @@ function parseGbrainOutput(output: string, limit: number): Array<Record<string, 
 
 async function obsidianSync(slug: string, markdown: string) {
   try {
-    const configFile = import.meta.dir + '/.clipbrain.json';
+    const configFile = dataPath('.clipbrain.json');
     const config = JSON.parse(await Bun.file(configFile).text());
 
     if (!config.obsidian?.enabled || !config.obsidian?.vaultPath) return;
@@ -637,7 +699,7 @@ async function obsidianSync(slug: string, markdown: string) {
 
 async function handleGetConfig(): Promise<Response> {
   try {
-    const configFile = import.meta.dir + '/.clipbrain.json';
+    const configFile = dataPath('.clipbrain.json');
     const config = JSON.parse(await Bun.file(configFile).text());
     return corsResponse(200, config);
   } catch {
@@ -654,7 +716,7 @@ async function handlePostConfig(req: Request): Promise<Response> {
   }
 
   try {
-    const configFile = import.meta.dir + '/.clipbrain.json';
+    const configFile = dataPath('.clipbrain.json');
     await Bun.write(configFile, JSON.stringify(body, null, 2) + '\n');
     return corsResponse(200, { status: 'saved' });
   } catch (err: any) {
@@ -664,7 +726,7 @@ async function handlePostConfig(req: Request): Promise<Response> {
 
 async function handleObsidianSyncAll(): Promise<Response> {
   try {
-    const configFile = import.meta.dir + '/.clipbrain.json';
+    const configFile = dataPath('.clipbrain.json');
     const config = JSON.parse(await Bun.file(configFile).text());
 
     if (!config.obsidian?.enabled || !config.obsidian?.vaultPath) {
@@ -782,23 +844,24 @@ async function handleUploadPdf(req: Request): Promise<Response> {
     extractedText,
   ].join('\n') + '\n';
 
-  // Fire and forget
-  gbrainPut(slug, markdown).then(() => {
-    recordCapture({ slug, type: 'pdf', title, capturedAt: timestamp });
-
-    // AI post-processing (background, never blocks)
-    postProcess(slug, markdown).catch(err => {
-      console.warn('[post-process] failed:', err.message);
-    });
-  }).catch((err) => {
+  try {
+    await gbrainPut(slug, markdown);
+    await recordCapture({ slug, type: 'pdf', title, capturedAt: timestamp });
+  } catch (err: any) {
     console.error(`[gbrain put] error:`, err);
-  });
+    return corsResponse(500, { error: 'Failed to save PDF to gbrain' });
+  }
 
   // Obsidian sync (fire and forget)
   obsidianSync(slug, markdown);
 
   // Track in highlight counts (use 1 per PDF as a "capture" count)
   updateHighlightCount(slug, 1);
+
+  // AI post-processing (background, never blocks)
+  postProcess(slug, markdown).catch(err => {
+    console.warn('[post-process] failed:', err.message);
+  });
 
   return corsResponse(202, { status: 'accepted', slug, title, pages });
 }
@@ -1074,7 +1137,7 @@ async function handleCaptureYouTube(req: Request): Promise<Response> {
   try {
     const tmpFile = `/tmp/clipbrain-yt-${videoId}`;
     const proc = Bun.spawn(
-      ['yt-dlp', '--write-auto-sub', '--sub-lang', 'en', '--skip-download', '--sub-format', 'json3', '-o', tmpFile, `https://www.youtube.com/watch?v=${videoId}`],
+      [ytDlpCommand, '--write-auto-sub', '--sub-lang', 'en', '--skip-download', '--sub-format', 'json3', '-o', tmpFile, `https://www.youtube.com/watch?v=${videoId}`],
       { stdout: 'pipe', stderr: 'pipe' }
     );
     const exitCode = await proc.exited;
@@ -1142,9 +1205,9 @@ async function handleCaptureYouTube(req: Request): Promise<Response> {
     '',
   ].join('\n');
 
-  // Fire-and-forget save
-  gbrainPut(slug, markdown).then(() => {
-    recordCapture({
+  try {
+    await gbrainPut(slug, markdown);
+    await recordCapture({
       slug,
       type: 'youtube',
       title,
@@ -1152,16 +1215,17 @@ async function handleCaptureYouTube(req: Request): Promise<Response> {
       url: `https://youtube.com/watch?v=${videoId}`,
       channel: channel || undefined,
     });
-
-    postProcess(slug, markdown).catch(err => {
-      console.warn('[post-process] failed:', err.message);
-    });
-  }).catch((err) => {
+  } catch (err: any) {
     console.error(`[gbrain put] error:`, err);
-  });
+    return corsResponse(500, { error: 'Failed to save YouTube transcript to gbrain' });
+  }
 
   // Obsidian sync
   obsidianSync(slug, markdown);
+
+  postProcess(slug, markdown).catch(err => {
+    console.warn('[post-process] failed:', err.message);
+  });
 
   return corsResponse(202, { status: 'accepted', slug, title, duration });
 }
@@ -1221,8 +1285,9 @@ async function handleCapture(req: Request): Promise<Response> {
         capturedAt,
       });
 
-  // Fire-and-forget — don't block the response on gbrain
-  gbrainPut(slug, markdown).then(async () => {
+  try {
+    await gbrainPut(slug, markdown);
+
     // Track highlight count for kindle imports, record digest entry
     let newHighlights: number | undefined;
     if (slug.startsWith('kindle/')) {
@@ -1232,7 +1297,7 @@ async function handleCapture(req: Request): Promise<Response> {
 
     const type = detectCaptureType(slug);
     const author = type === 'kindle' ? slug.split('/')[1]?.replace(/-/g, ' ') : undefined;
-    recordCapture({
+    await recordCapture({
       slug,
       type,
       title,
@@ -1243,16 +1308,18 @@ async function handleCapture(req: Request): Promise<Response> {
       from: isGmail ? emailFrom : undefined,
     });
 
-    // AI post-processing (background, never blocks)
-    postProcess(slug, markdown).catch(err => {
-      console.warn('[post-process] failed:', err.message);
-    });
-  }).catch((err) => {
+  } catch (err: any) {
     console.error(`[gbrain put] error:`, err);
-  });
+    return corsResponse(500, { error: 'Failed to save capture to gbrain' });
+  }
 
   // Obsidian sync (parallel, independent of gbrainPut)
   obsidianSync(slug, markdown);
+
+  // AI post-processing (background, never blocks)
+  postProcess(slug, markdown).catch(err => {
+    console.warn('[post-process] failed:', err.message);
+  });
 
   return corsResponse(202, { status: 'accepted', slug });
 }
@@ -1275,20 +1342,52 @@ function parsePort(args: string[]): number {
   return DEFAULT_PORT;
 }
 
+function parseHost(args: string[]): string {
+  const idx = args.indexOf('--host');
+  if (idx !== -1 && args[idx + 1]) {
+    return args[idx + 1];
+  }
+  return process.env.GBRAIN_CAPTURE_HOST || DEFAULT_HOST;
+}
+
 // ---------------------------------------------------------------------------
 // yt-dlp availability check
 // ---------------------------------------------------------------------------
 
 let ytDlpAvailable = false;
+let ytDlpCommand = 'yt-dlp';
 
 async function checkYtDlp(): Promise<boolean> {
+  const candidates = [
+    process.env.YT_DLP_BIN,
+    'yt-dlp',
+    '/opt/homebrew/bin/yt-dlp',
+    '/usr/local/bin/yt-dlp',
+  ].filter(Boolean) as string[];
+
   try {
-    const proc = Bun.spawn(['which', 'yt-dlp'], { stdout: 'pipe', stderr: 'pipe' });
-    const exitCode = await proc.exited;
-    return exitCode === 0;
+    const fs = require('fs');
+    for (const candidate of candidates) {
+      if (candidate.includes('/')) {
+        if (fs.existsSync(candidate)) {
+          ytDlpCommand = candidate;
+          return true;
+        }
+        continue;
+      }
+
+      const proc = Bun.spawn(['which', candidate], { stdout: 'pipe', stderr: 'pipe' });
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        const stdout = await new Response(proc.stdout).text();
+        ytDlpCommand = stdout.trim() || candidate;
+        return true;
+      }
+    }
   } catch {
-    return false;
+    // Fall through to false.
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -1300,7 +1399,7 @@ async function handleDiagnostics(): Promise<Response> {
 
   let obsidianEnabled = false;
   try {
-    const configFile = import.meta.dir + '/.clipbrain.json';
+    const configFile = dataPath('.clipbrain.json');
     const config = JSON.parse(await Bun.file(configFile).text());
     obsidianEnabled = !!config.obsidian?.enabled;
   } catch {}
@@ -1313,13 +1412,19 @@ async function handleDiagnostics(): Promise<Response> {
     // Get total count from stats
     try {
       const statsOutput = await gbrainExec(['list', '--limit', '10000']);
-      captures = statsOutput.trim().split('\n').filter(Boolean).length;
+      captures = parseGbrainOutput(statsOutput, 10000).filter(i =>
+        i.slug?.startsWith('kindle/') ||
+        i.slug?.startsWith('web/') ||
+        i.slug?.startsWith('pdf/') ||
+        i.slug?.startsWith('youtube/') ||
+        i.slug?.startsWith('email/')
+      ).length;
     } catch {}
   } catch {}
 
   let processingEnabled = false;
   try {
-    const configFile = import.meta.dir + '/.clipbrain.json';
+    const configFile = dataPath('.clipbrain.json');
     const config = JSON.parse(await Bun.file(configFile).text());
     processingEnabled = !!config.processing?.enabled && hasOpenaiKey;
   } catch {}
@@ -1348,7 +1453,9 @@ async function handleDiagnostics(): Promise<Response> {
 // Server
 // ---------------------------------------------------------------------------
 
-const port = parsePort(process.argv.slice(2));
+const args = process.argv.slice(2);
+const port = parsePort(args);
+const host = parseHost(args);
 
 if (import.meta.main) {
   // Check yt-dlp availability at startup (non-blocking)
@@ -1363,14 +1470,20 @@ if (import.meta.main) {
   });
 
   const server = Bun.serve({
+    hostname: host,
     port,
     fetch(req) {
       const url = new URL(req.url);
+      const originRejection = rejectDisallowedOrigin(req, port);
+      if (originRejection) return originRejection;
 
       // Preflight
       if (req.method === 'OPTIONS') {
         return new Response(null, { status: 204, headers: CORS_HEADERS });
       }
+
+      const authRejection = rejectUnauthorized(req);
+      if (authRejection) return authRejection;
 
       // Dashboard
       if (url.pathname === '/' && req.method === 'GET') {
@@ -1463,5 +1576,5 @@ if (import.meta.main) {
     },
   });
 
-  console.log(`ClipBrain server listening on http://localhost:${server.port}`);
+  console.log(`ClipBrain server listening on http://${host}:${server.port}`);
 }

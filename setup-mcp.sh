@@ -4,24 +4,31 @@ set -euo pipefail
 
 # ─── Resolve paths ────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CLI_TS_PATH="$SCRIPT_DIR/node_modules/gbrain/src/cli.ts"
 
-if [ ! -f "$CLI_TS_PATH" ]; then
-  echo "Error: Could not find gbrain CLI at $CLI_TS_PATH"
-  echo "Run ./setup.sh first to install dependencies."
-  exit 1
-fi
-
-# Verify bun is available
 if ! command -v bun &>/dev/null; then
   echo "Error: bun is not installed. Install it from https://bun.sh"
   exit 1
 fi
 
+if ! command -v gbrain &>/dev/null; then
+  echo "gbrain CLI not found; installing it now..."
+  bun install --global github:garrytan/gbrain
+fi
+
+if ! command -v gbrain &>/dev/null; then
+  echo "Error: Could not find gbrain after installation."
+  echo "Make sure Bun's global bin directory is on PATH, then re-run ./setup-mcp.sh"
+  exit 1
+fi
+
+GBRAIN_PATH="$(command -v gbrain)"
+MCP_COMMAND="$GBRAIN_PATH"
+MCP_ARGS_JSON="[\"serve\"]"
+
 echo "ClipBrain MCP Setup"
 echo "==================="
 echo ""
-echo "CLI path: $CLI_TS_PATH"
+echo "MCP command: $MCP_COMMAND $MCP_ARGS_JSON"
 echo ""
 
 # ─── Ask which tool to configure ──────────────────────────────────────────────
@@ -48,15 +55,6 @@ esac
 # Usage: merge_mcp_json <file>
 merge_mcp_json() {
   local FILE="$1"
-  local MCP_ENTRY
-  MCP_ENTRY=$(cat <<JSONEOF
-{
-  "command": "bun",
-  "args": ["run", "$CLI_TS_PATH", "serve"]
-}
-JSONEOF
-)
-
   if [ ! -f "$FILE" ]; then
     # Create new file with just the mcpServers section
     mkdir -p "$(dirname "$FILE")"
@@ -64,8 +62,8 @@ JSONEOF
 {
   "mcpServers": {
     "gbrain": {
-      "command": "bun",
-      "args": ["run", "$CLI_TS_PATH", "serve"]
+      "command": "$MCP_COMMAND",
+      "args": $MCP_ARGS_JSON
     }
   }
 }
@@ -80,25 +78,25 @@ JSONEOF
     # Use jq for reliable JSON merging
     local TMP
     TMP=$(mktemp)
-    jq --arg cli "$CLI_TS_PATH" '
+    jq --arg command "$MCP_COMMAND" --argjson args "$MCP_ARGS_JSON" '
       .mcpServers = (.mcpServers // {}) |
       .mcpServers.gbrain = {
-        "command": "bun",
-        "args": ["run", $cli, "serve"]
+        "command": $command,
+        "args": $args
       }
     ' "$FILE" > "$TMP" && mv "$TMP" "$FILE"
   elif command -v python3 &>/dev/null; then
     # Fallback to python3
-    python3 - "$FILE" "$CLI_TS_PATH" <<'PYEOF'
+    python3 - "$FILE" "$MCP_COMMAND" "$MCP_ARGS_JSON" <<'PYEOF'
 import json, sys
-filepath, cli_path = sys.argv[1], sys.argv[2]
+filepath, command, args_json = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(filepath, 'r') as f:
     data = json.load(f)
 if 'mcpServers' not in data:
     data['mcpServers'] = {}
 data['mcpServers']['gbrain'] = {
-    "command": "bun",
-    "args": ["run", cli_path, "serve"]
+    "command": command,
+    "args": json.loads(args_json)
 }
 with open(filepath, 'w') as f:
     json.dump(data, f, indent=2)
@@ -109,8 +107,8 @@ PYEOF
     echo "Please manually add the following to $FILE under \"mcpServers\":"
     echo ""
     echo "  \"gbrain\": {"
-    echo "    \"command\": \"bun\","
-    echo "    \"args\": [\"run\", \"$CLI_TS_PATH\", \"serve\"]"
+    echo "    \"command\": \"$MCP_COMMAND\","
+    echo "    \"args\": $MCP_ARGS_JSON"
     echo "  }"
     echo ""
     return 1

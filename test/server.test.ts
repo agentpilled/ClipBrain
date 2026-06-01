@@ -1,7 +1,9 @@
-import { describe, test, expect, beforeAll, afterAll, mock } from 'bun:test';
-import { canonicalizeUrl, slugFromUrl, buildMarkdown, detectCaptureType, formatDigestMarkdown } from '../server.ts';
+import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { canonicalizeUrl, slugFromUrl, buildMarkdown, detectCaptureType, formatDigestMarkdown, isAllowedOrigin, isAuthorizedRequest } from '../server.ts';
 import type { CaptureLogEntry } from '../server.ts';
-import { $ } from 'bun';
 
 // ---------------------------------------------------------------------------
 // Helper: minimal valid PDF buffer with extractable text
@@ -162,18 +164,67 @@ describe('buildMarkdown', () => {
   });
 });
 
+describe('isAllowedOrigin', () => {
+  test('allows Chrome extension origins', () => {
+    expect(isAllowedOrigin('chrome-extension://abcdefghijklmnopabcdefghijklmnop')).toBe(true);
+  });
+
+  test('allows ClipBrain loopback dashboard origins on the active port', () => {
+    expect(isAllowedOrigin('http://127.0.0.1:19285', 19285)).toBe(true);
+    expect(isAllowedOrigin('http://localhost:19285', 19285)).toBe(true);
+  });
+
+  test('rejects unrelated web origins and wrong loopback ports', () => {
+    expect(isAllowedOrigin('https://example.com', 19285)).toBe(false);
+    expect(isAllowedOrigin('http://localhost:3000', 19285)).toBe(false);
+  });
+});
+
+describe('isAuthorizedRequest', () => {
+  test('allows requests when no token is configured', () => {
+    expect(isAuthorizedRequest('POST', new Headers(), '')).toBe(true);
+  });
+
+  test('does not require tokens for read and preflight methods', () => {
+    expect(isAuthorizedRequest('GET', new Headers(), 'secret')).toBe(true);
+    expect(isAuthorizedRequest('OPTIONS', new Headers(), 'secret')).toBe(true);
+  });
+
+  test('allows bearer and X-ClipBrain-Token credentials', () => {
+    expect(isAuthorizedRequest('POST', new Headers({ Authorization: 'Bearer secret' }), 'secret')).toBe(true);
+    expect(isAuthorizedRequest('POST', new Headers({ 'X-ClipBrain-Token': 'secret' }), 'secret')).toBe(true);
+  });
+
+  test('rejects missing or invalid write credentials', () => {
+    expect(isAuthorizedRequest('POST', new Headers(), 'secret')).toBe(false);
+    expect(isAuthorizedRequest('POST', new Headers({ Authorization: 'Bearer wrong' }), 'secret')).toBe(false);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Integration tests — HTTP endpoints
 // ---------------------------------------------------------------------------
 
 describe('HTTP server', () => {
-  const BASE = `http://localhost:19285`;
+  const TEST_PORT = Number(process.env.CLIPBRAIN_TEST_PORT || (19385 + Math.floor(Math.random() * 1000)));
+  const BASE = `http://127.0.0.1:${TEST_PORT}`;
   let serverProc: ReturnType<typeof Bun.spawn> | null = null;
+  let dataDir = '';
 
   beforeAll(async () => {
+    dataDir = mkdtempSync(join(tmpdir(), 'clipbrain-test-data-'));
+
     // Start the server as a subprocess (import.meta.main guard means import alone won't start it)
-    serverProc = Bun.spawn(['bun', 'run', 'server.ts'], {
+    serverProc = Bun.spawn(['bun', 'run', 'server.ts', '--port', String(TEST_PORT)], {
       cwd: import.meta.dir + '/..',
+      env: {
+        ...process.env,
+        GBRAIN_CAPTURE_HOST: '127.0.0.1',
+        GBRAIN_BIN: process.env.GBRAIN_BIN || '/usr/bin/true',
+        CLIPBRAIN_DATA_DIR: dataDir,
+        OPENAI_API_KEY: '',
+        CLIPBRAIN_API_TOKEN: '',
+      },
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -193,6 +244,9 @@ describe('HTTP server', () => {
       serverProc.kill();
       serverProc = null;
     }
+    if (dataDir) {
+      rmSync(dataDir, { recursive: true, force: true });
+    }
   });
 
   test('GET /health returns ok', async () => {
@@ -207,10 +261,31 @@ describe('HTTP server', () => {
     expect(res.headers.get('access-control-allow-origin')).toBe('*');
   });
 
+  test('GET /health rejects unrelated browser origins', async () => {
+    const res = await fetch(`${BASE}/health`, {
+      headers: { Origin: 'https://example.com' },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  test('GET /health allows Chrome extension origins', async () => {
+    const origin = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
+    const res = await fetch(`${BASE}/health`, { headers: { Origin: origin } });
+    expect(res.status).toBe(200);
+  });
+
   test('OPTIONS preflight returns 204', async () => {
     const res = await fetch(`${BASE}/api/capture`, { method: 'OPTIONS' });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-methods')).toContain('POST');
+  });
+
+  test('OPTIONS preflight rejects unrelated browser origins', async () => {
+    const res = await fetch(`${BASE}/api/capture`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'https://example.com' },
+    });
+    expect(res.status).toBe(403);
   });
 
   test('POST /api/capture with missing url returns 400', async () => {
@@ -463,4 +538,3 @@ describe('formatDigestMarkdown', () => {
     expect(md).toContain('- Attention Is All You Need');
   });
 });
-

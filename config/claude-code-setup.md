@@ -12,7 +12,7 @@ Add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings
 {
   "mcpServers": {
     "gbrain": {
-      "command": "/path/to/gbrain-capture/bin/gbrain",
+      "command": "gbrain",
       "args": ["serve"]
     }
   }
@@ -58,10 +58,7 @@ If your OpenClaw version supports `mcpServers` in config, add:
 ```json
 {
   "mcpServers": {
-    "gbrain": {
-      "command": "/path/to/gbrain-capture/bin/gbrain",
-      "args": ["serve"]
-    }
+    "gbrain": { "command": "gbrain", "args": ["serve"] }
   }
 }
 ```
@@ -75,10 +72,7 @@ Open Settings > Developer > Edit Config. Add to `mcpServers`:
 ```json
 {
   "mcpServers": {
-    "gbrain": {
-      "command": "/path/to/gbrain-capture/bin/gbrain",
-      "args": ["serve"]
-    }
+    "gbrain": { "command": "gbrain", "args": ["serve"] }
   }
 }
 ```
@@ -92,7 +86,7 @@ Restart Claude Desktop.
 Open Settings > MCP. Add a new server:
 
 - Name: `gbrain`
-- Command: `/path/to/gbrain-capture/bin/gbrain serve`
+- Command: `gbrain serve`
 
 ---
 
@@ -101,7 +95,7 @@ Open Settings > MCP. Add a new server:
 The MCP server command is:
 
 ```
-/path/to/gbrain-capture/bin/gbrain serve
+gbrain serve
 ```
 
 It communicates via stdio. Connect it like any other MCP server.
