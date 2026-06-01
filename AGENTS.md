@@ -15,6 +15,7 @@ Important files:
 - `server.ts`: local HTTP API, dashboard routes, capture handling, diagnostics
 - `clipbrain-mcp.ts`: ClipBrain-specific MCP tools that call the local server
 - `backfill.ts`: controlled Knowledge Compiler backfill for legacy captures
+- `corpus-report.ts`: read-only corpus quality report for junk/duplicate audit
 - `service-worker.js`: MV3 background worker, capture dispatch, offline queue
 - `content-script.js`, `kindle-content-script.js`, `gmail-content-script.js`: page extractors
 - `post-process.ts`: optional OpenAI enrichment after a capture is saved
@@ -40,6 +41,8 @@ Important files:
   Tests should use `CLIPBRAIN_DATA_DIR` for isolated state.
 - Use `bun run backfill --limit N` for a dry-run before applying compiler
   upgrades with `bun run backfill --apply --limit N`.
+- Use `bun run corpus` to inspect likely junk, duplicate titles, and pending
+  compiler upgrades. It is read-only.
 
 ## Security Boundaries
 

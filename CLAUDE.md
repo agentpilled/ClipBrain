@@ -69,6 +69,10 @@ bun run backfill --apply --limit 5   # writes enriched pages
 
 The backfill targets ClipBrain slugs (`kindle/`, `web/`, `pdf/`, `youtube/`, `email/`) whose `compiler_version` is missing or outdated. Use `--force` only when intentionally refreshing already-current pages.
 
+Use `bun run corpus` for a read-only corpus quality report. It flags likely
+test captures, Kindle import artifacts, truncated titles, duplicate title
+groups, and pages still pending backfill.
+
 ## Setup
 
 ```bash

@@ -25,6 +25,7 @@ export type BackfillOptions = {
   force: boolean;
   limit: number;
   listLimit: number;
+  slug?: string;
   type?: string;
   slugPrefix?: string;
   sleepMs: number;
@@ -64,8 +65,9 @@ export function isClipBrainSlug(slug: string): boolean {
   return CLIPBRAIN_PREFIXES.some(prefix => slug.startsWith(prefix));
 }
 
-export function shouldInspectItem(item: BackfillListItem, opts: Pick<BackfillOptions, 'type' | 'slugPrefix'>): boolean {
+export function shouldInspectItem(item: BackfillListItem, opts: Pick<BackfillOptions, 'slug' | 'type' | 'slugPrefix'>): boolean {
   if (!isClipBrainSlug(item.slug)) return false;
+  if (opts.slug && item.slug !== opts.slug) return false;
   if (opts.type && !item.slug.startsWith(`${opts.type}/`)) return false;
   if (opts.slugPrefix && !item.slug.startsWith(opts.slugPrefix)) return false;
   return true;
@@ -98,6 +100,7 @@ export function parseBackfillArgs(argv: string[]): BackfillOptions {
     else if (arg === '--all') explicitAll = true;
     else if (arg === '--limit') opts.limit = parsePositiveInt(next(), '--limit');
     else if (arg === '--list-limit') opts.listLimit = parsePositiveInt(next(), '--list-limit');
+    else if (arg === '--slug') opts.slug = next();
     else if (arg === '--type') opts.type = normalizeType(next());
     else if (arg === '--slug-prefix') opts.slugPrefix = next();
     else if (arg === '--sleep-ms') opts.sleepMs = parseNonNegativeInt(next(), '--sleep-ms');
@@ -106,6 +109,9 @@ export function parseBackfillArgs(argv: string[]): BackfillOptions {
   }
 
   if (explicitAll) opts.limit = opts.listLimit;
+  if (opts.slug && !isClipBrainSlug(opts.slug)) {
+    throw new Error(`--slug must start with one of: ${CLIPBRAIN_PREFIXES.join(', ')}`);
+  }
   if (opts.slugPrefix && !CLIPBRAIN_PREFIXES.some(prefix => opts.slugPrefix!.startsWith(prefix))) {
     throw new Error(`--slug-prefix must start with one of: ${CLIPBRAIN_PREFIXES.join(', ')}`);
   }
@@ -255,6 +261,7 @@ function printHelp() {
     '  --limit N            Max candidates to inspect/process (default: 20)',
     '  --all                Use --list-limit as the candidate limit',
     '  --list-limit N       Max pages to list from gbrain (default: 10000)',
+    '  --slug S            Process one exact slug',
     '  --type T             Filter to kindle, web, pdf, youtube, or email',
     '  --slug-prefix P      Filter by slug prefix, e.g. kindle/ryan-holiday/',
     '  --sleep-ms N         Delay between applied pages',

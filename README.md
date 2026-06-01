@@ -91,6 +91,13 @@ safe dry-run first:
 ```bash
 bun run backfill --limit 20
 bun run backfill --apply --limit 5
+bun run backfill --slug kindle/deep-work-by-cal-newport
+```
+
+To inspect corpus quality without deleting anything:
+
+```bash
+bun run corpus
 ```
 
 ## Dashboard

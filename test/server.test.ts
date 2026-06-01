@@ -617,6 +617,13 @@ describe('HTTP server', () => {
     expect(body.error).toContain('OPENAI_API_KEY');
   });
 
+  test('POST /api/reprocess-all rejects non-ClipBrain exact slugs', async () => {
+    const res = await fetch(`${BASE}/api/reprocess-all?dry_run=true&slug=daily/test`, { method: 'POST' });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('slug');
+  });
+
   // -------------------------------------------------------------------------
   // PDF upload tests
   // -------------------------------------------------------------------------

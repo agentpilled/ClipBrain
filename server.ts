@@ -1465,9 +1465,14 @@ async function handleReprocessAll(req: Request): Promise<Response> {
   const dryRun = url.searchParams.get('dry_run') === 'true';
   const force = url.searchParams.get('force') === 'true';
   const limit = clampNumber(parseInt(url.searchParams.get('limit') || '10', 10), 1, 100);
+  const exactSlug = (url.searchParams.get('slug') || '').trim();
   const type = (url.searchParams.get('type') || '').trim().toLowerCase();
   const slugPrefix = (url.searchParams.get('slug_prefix') || '').trim();
   const allowedTypes = new Set(['kindle', 'web', 'pdf', 'youtube', 'email']);
+
+  if (exactSlug && !['kindle/', 'web/', 'pdf/', 'youtube/', 'email/'].some(prefix => exactSlug.startsWith(prefix))) {
+    return corsResponse(400, { error: 'slug must start with kindle/, web/, pdf/, youtube/, or email/' });
+  }
 
   if (type && !allowedTypes.has(type)) {
     return corsResponse(400, { error: 'type must be one of: kindle, web, pdf, youtube, email' });
@@ -1494,6 +1499,7 @@ async function handleReprocessAll(req: Request): Promise<Response> {
       const parts = line.split('\t');
       const slug = parts[0]?.trim();
       if (!slug || (!slug.startsWith('kindle/') && !slug.startsWith('web/') && !slug.startsWith('pdf/') && !slug.startsWith('youtube/') && !slug.startsWith('email/'))) continue;
+      if (exactSlug && slug !== exactSlug) continue;
       if (type && !slug.startsWith(`${type}/`)) continue;
       if (slugPrefix && !slug.startsWith(slugPrefix)) continue;
 
