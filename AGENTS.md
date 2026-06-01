@@ -16,6 +16,7 @@ Important files:
 - `clipbrain-mcp.ts`: ClipBrain-specific MCP tools that call the local server
 - `backfill.ts`: controlled Knowledge Compiler backfill for legacy captures
 - `corpus-report.ts`: read-only corpus quality report for junk/duplicate audit
+- `cleanup-plan.ts`: read-only cleanup recommendations; never deletes or writes
 - `service-worker.js`: MV3 background worker, capture dispatch, offline queue
 - `content-script.js`, `kindle-content-script.js`, `gmail-content-script.js`: page extractors
 - `post-process.ts`: optional OpenAI enrichment after a capture is saved
@@ -43,6 +44,8 @@ Important files:
   upgrades with `bun run backfill --apply --limit N`.
 - Use `bun run corpus` to inspect likely junk, duplicate titles, and pending
   compiler upgrades. It is read-only.
+- Use `bun run cleanup-plan` to turn the corpus audit into a read-only
+  keep/delete/merge/title-fix proposal before any manual cleanup.
 
 ## Security Boundaries
 

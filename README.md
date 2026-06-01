@@ -98,7 +98,12 @@ To inspect corpus quality without deleting anything:
 
 ```bash
 bun run corpus
+bun run cleanup-plan
 ```
+
+`corpus` reports likely junk, duplicate titles, and backfill gaps.
+`cleanup-plan` turns that audit into read-only delete/merge/title-fix
+recommendations; it never writes to gbrain.
 
 ## Dashboard
 
