@@ -8,4 +8,5 @@ bin/*
 .cleanup-actions.jsonl
 .cleanup-backups/
 .mailmap-rewrite
+.impeccable.md
 test-new-*
