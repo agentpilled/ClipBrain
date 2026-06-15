@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.2] - 2026-06-09
+
+Fixed a silent setup failure. `./setup.sh` could print *"✅ ClipBrain is ready!"* without actually creating your brain — if no embedding provider was configured, `gbrain init` exits without creating one (exit 0), and setup didn't notice. Now setup detects your provider (OpenAI key → OpenAI embeddings; local Ollama → Ollama; otherwise a keyword-only brain), **always creates a working brain**, verifies it exists before claiming success, and tells you whether semantic search is on (and how to enable it). Captures and search work out of the box now, even without an API key.
+
 ## [0.2.1] - 2026-06-09
 
 *"What did I highlight in X?"* now returns your **actual highlights**, not just an AI summary of them. The context pack surfaces a page's saved highlights and notes — the source-of-truth content — ahead of the derived summary, so asking about a book or article gives you back what you actually marked (capped, with a pointer to the full page for long sets). Completes the named-source experience from v0.2.0, which made the named source rank first.

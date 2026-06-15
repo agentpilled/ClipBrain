@@ -44,11 +44,40 @@ else
 fi
 
 # ─── Step 3: Initialize gbrain database ──────────────────────────────────────
+# gbrain init requires an embedding provider (or --no-embedding) or it prints
+# guidance and exits 0 WITHOUT creating a brain. Detect the best available
+# provider and always fall back to a functional keyword-only brain, so setup
+# can never silently leave a new user with no brain.
+SEMANTIC_ENABLED=true
 if [ ! -f ~/.gbrain/config.json ]; then
   echo "→ Initializing ClipBrain database..."
-  "$GBRAIN_PATH" init
+
+  EMBED_FLAG="--no-embedding"
+  EMBED_DESC="keyword-only (no semantic search yet)"
+  if [ -n "$OPENAI_API_KEY" ]; then
+    EMBED_FLAG="--embedding-model openai:text-embedding-3-large"
+    EMBED_DESC="OpenAI embeddings"
+  elif curl -s --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    EMBED_FLAG="--embedding-model ollama:nomic-embed-text"
+    EMBED_DESC="local Ollama embeddings (nomic-embed-text)"
+  fi
+  echo "  → Embeddings: $EMBED_DESC"
+
+  "$GBRAIN_PATH" init --pglite $EMBED_FLAG || true
+
+  # init can exit 0 without creating a brain — verify before claiming success.
+  if [ ! -f ~/.gbrain/config.json ]; then
+    echo "  ✗ Brain was not created — gbrain init did not complete."
+    echo "    Retry with an embedding provider:"
+    echo "      export OPENAI_API_KEY=sk-...   &&  ./setup.sh"
+    echo "    or create a keyword-only brain now:"
+    echo "      gbrain init --pglite --no-embedding   &&  ./setup.sh"
+    exit 1
+  fi
+  [ "$EMBED_FLAG" = "--no-embedding" ] && SEMANTIC_ENABLED=false
 else
   echo "→ ClipBrain already initialized ✓"
+  grep -q '"embedding_model"' ~/.gbrain/config.json 2>/dev/null || SEMANTIC_ENABLED=false
 fi
 
 # ─── Step 4: Configure MCP for your AI ───────────────────────────────────────
@@ -396,6 +425,13 @@ if [ -n "$OPENAI_API_KEY" ]; then
   echo "  ✓ Smart processing (GPT-4o-mini)"
 else
   echo "  ○ Smart processing disabled (set OPENAI_API_KEY to enable)"
+fi
+if [ "$SEMANTIC_ENABLED" = false ]; then
+  echo "  ○ Semantic search OFF — keyword + title search only."
+  echo "    Enable: set OPENAI_API_KEY (or run Ollama), then:"
+  echo "    gbrain config set embedding_model openai:text-embedding-3-large && gbrain embed --all"
+else
+  echo "  ✓ Semantic search enabled"
 fi
 if command -v yt-dlp &>/dev/null; then
   echo "  ✓ YouTube transcripts (yt-dlp)"
