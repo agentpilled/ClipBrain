@@ -377,6 +377,7 @@ export type ContextPackSource = {
   tags: string[];
   atoms: ContextPackAtoms;
   snippet: string;
+  highlights: string;
   sourceUrl?: string;
 };
 
@@ -791,6 +792,21 @@ export function parseContextPackSource(opts: {
   const sourceUrl = frontmatter.source_url || frontmatter.source;
   const snippet = cleanContextSnippet(opts.snippet || firstMeaningfulBodyText(opts.content));
 
+  // Raw user highlights/notes — the actual answer to "what did I highlight in X".
+  // The enrichment summary/atoms are derived; this is the source-of-truth content.
+  const rawHighlights = [
+    parseMarkdownSection(opts.content, 'Highlights'),
+    parseMarkdownSection(opts.content, 'Notes'),
+  ].filter(Boolean).join('\n\n').trim();
+  let highlights = rawHighlights;
+  const HIGHLIGHTS_CAP = 3000;
+  if (highlights.length > HIGHLIGHTS_CAP) {
+    const slice = highlights.slice(0, HIGHLIGHTS_CAP);
+    const cut = slice.lastIndexOf('\n');
+    highlights = (cut > 0 ? slice.slice(0, cut) : slice).trimEnd() +
+      `\n… (more highlights in the full page \`${opts.slug}\`)`;
+  }
+
   return {
     id: `S${opts.index || 1}`,
     slug: opts.slug,
@@ -800,6 +816,7 @@ export function parseContextPackSource(opts: {
     tags,
     atoms,
     snippet,
+    highlights,
     sourceUrl,
   };
 }
@@ -843,6 +860,12 @@ export function formatContextPackMarkdown(query: string, sources: ContextPackSou
       lines.push('');
       lines.push('Retrieval snippet:');
       lines.push(source.snippet);
+    }
+
+    if (source.highlights) {
+      lines.push('');
+      lines.push('Highlights (your saved highlights & notes):');
+      lines.push(source.highlights);
     }
 
     if (source.summary) {

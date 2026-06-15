@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.1] - 2026-06-09
+
+*"What did I highlight in X?"* now returns your **actual highlights**, not just an AI summary of them. The context pack surfaces a page's saved highlights and notes — the source-of-truth content — ahead of the derived summary, so asking about a book or article gives you back what you actually marked (capped, with a pointer to the full page for long sets). Completes the named-source experience from v0.2.0, which made the named source rank first.
+
 ## [0.2.0] - 2026-06-09
 
 Ask your AI about a specific book, article, or video **by name** and get that exact source back. Queries like *"what did I highlight in Deep Work?"* or *"what did that AI moats video say?"* now surface the source you named **first**, instead of burying it under thematically-similar reading. The context pack adds a title-aware retrieval pass: any captured page whose title (or author) appears in your query is promoted ahead of the semantic results. Topic and open-ended queries (*"what have I read about decision-making?"*) are unchanged.

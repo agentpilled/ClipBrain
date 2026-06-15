@@ -65,6 +65,59 @@ describe('title-aware retrieval boost', () => {
   });
 });
 
+describe('context pack returns raw highlights, not just the summary', () => {
+  const bookContent = `---
+title: Deep Work by Cal Newport
+type: note
+---
+
+## Summary
+A summary of the book.
+
+## Highlights
+> "Focus is the new IQ" (Location 10)
+> "Deep work is rare and valuable" (Location 42)
+
+## Notes
+- My note about minimizing distractions.
+`;
+
+  test('parseContextPackSource extracts the Highlights + Notes sections', () => {
+    const src = parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content: bookContent });
+    expect(src.highlights).toContain('Focus is the new IQ');
+    expect(src.highlights).toContain('Deep work is rare and valuable');
+    expect(src.highlights).toContain('minimizing distractions');
+  });
+
+  test('formatted markdown surfaces the raw highlights', () => {
+    const src = parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content: bookContent });
+    const md = formatContextPackMarkdown('what did I highlight in Deep Work', [src]);
+    expect(md).toContain('Highlights (your saved highlights & notes)');
+    expect(md).toContain('Focus is the new IQ');
+  });
+
+  test('pages without a Highlights section yield empty highlights', () => {
+    const webContent = `---
+title: An Article
+type: web
+---
+
+## Summary
+Just a summary, no highlights here.
+`;
+    const src = parseContextPackSource({ slug: 'web/example-com/article', content: webContent });
+    expect(src.highlights).toBe('');
+  });
+
+  test('long highlight sets are capped with a pointer to the full page', () => {
+    const many = Array.from({ length: 400 }, (_, i) => `> Highlight number ${i} with a bit of text`).join('\n');
+    const longContent = `---\ntitle: Big Book\ntype: note\n---\n\n## Highlights\n${many}\n`;
+    const src = parseContextPackSource({ slug: 'kindle/big-book', content: longContent });
+    expect(src.highlights.length).toBeLessThan(3200);
+    expect(src.highlights).toContain('more highlights in the full page');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Helper: minimal valid PDF buffer with extractable text
 // ---------------------------------------------------------------------------
