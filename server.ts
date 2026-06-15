@@ -378,6 +378,7 @@ export type ContextPackSource = {
   atoms: ContextPackAtoms;
   snippet: string;
   highlights: string;
+  related: string;
   sourceUrl?: string;
 };
 
@@ -807,6 +808,17 @@ export function parseContextPackSource(opts: {
       `\n… (more highlights in the full page \`${opts.slug}\`)`;
   }
 
+  // Connections — the page's auto-computed "## Related" links to other saved
+  // notes. Surfacing them lets the agent proactively point at related reading
+  // the user might have forgotten ("the brain is alive, not a filing cabinet").
+  let related = parseMarkdownSection(opts.content, 'Related');
+  const RELATED_CAP = 1500;
+  if (related.length > RELATED_CAP) {
+    const slice = related.slice(0, RELATED_CAP);
+    const cut = slice.lastIndexOf('\n');
+    related = (cut > 0 ? slice.slice(0, cut) : slice).trimEnd();
+  }
+
   return {
     id: `S${opts.index || 1}`,
     slug: opts.slug,
@@ -817,6 +829,7 @@ export function parseContextPackSource(opts: {
     atoms,
     snippet,
     highlights,
+    related,
     sourceUrl,
   };
 }
@@ -872,6 +885,12 @@ export function formatContextPackMarkdown(query: string, sources: ContextPackSou
       lines.push('');
       lines.push('Summary:');
       lines.push(source.summary);
+    }
+
+    if (source.related) {
+      lines.push('');
+      lines.push('Related (other saved notes this connects to):');
+      lines.push(source.related);
     }
 
     if (source.atoms.claims.length > 0) {

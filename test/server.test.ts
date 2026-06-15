@@ -118,6 +118,40 @@ Just a summary, no highlights here.
   });
 });
 
+describe('context pack surfaces connections (Related)', () => {
+  const content = `---
+title: Deep Work by Cal Newport
+type: note
+---
+
+## Summary
+A summary.
+
+## Related
+- [[meditations]] — Both touch on mental clarity and focus.
+- [[range]] — Connects via deliberate practice.
+`;
+
+  test('parseContextPackSource extracts the Related section', () => {
+    const src = parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content });
+    expect(src.related).toContain('[[meditations]]');
+    expect(src.related).toContain('[[range]]');
+  });
+
+  test('formatted markdown surfaces the connections', () => {
+    const src = parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content });
+    const md = formatContextPackMarkdown('what did I highlight in Deep Work', [src]);
+    expect(md).toContain('Related (other saved notes this connects to)');
+    expect(md).toContain('[[meditations]]');
+  });
+
+  test('pages without a Related section yield empty related', () => {
+    const c = `---\ntitle: X\ntype: web\n---\n\n## Summary\nNo related here.\n`;
+    const src = parseContextPackSource({ slug: 'web/example-com/y', content: c });
+    expect(src.related).toBe('');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Helper: minimal valid PDF buffer with extractable text
 // ---------------------------------------------------------------------------

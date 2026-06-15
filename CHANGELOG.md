@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.3] - 2026-06-09
+
+Your AI now sees the **connections** between your captures. When you ask about something, the context pack includes each source's related notes — the auto-computed "see also" links to other things you've saved on the topic — so your AI can point you to related reading you might have forgotten. The first step toward a brain that surfaces what you know, not just what you literally asked for.
+
 ## [0.2.2] - 2026-06-09
 
 Fixed a silent setup failure. `./setup.sh` could print *"✅ ClipBrain is ready!"* without actually creating your brain — if no embedding provider was configured, `gbrain init` exits without creating one (exit 0), and setup didn't notice. Now setup detects your provider (OpenAI key → OpenAI embeddings; local Ollama → Ollama; otherwise a keyword-only brain), **always creates a working brain**, verifies it exists before claiming success, and tells you whether semantic search is on (and how to enable it). Captures and search work out of the box now, even without an API key.
