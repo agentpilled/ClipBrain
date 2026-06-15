@@ -611,6 +611,65 @@ async function handlePage(req: Request): Promise<Response> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Title-aware retrieval boost
+// ---------------------------------------------------------------------------
+// Named-entity queries ("what did I highlight in Deep Work") under-rank the
+// named source in pure semantic search — thematically-similar pages win and the
+// page the user actually named gets buried. We surface any captured page whose
+// title appears in the query AHEAD of the semantic results, so "what did I
+// highlight in X" reliably returns X. Operates only over ClipBrain capture
+// slugs, so it never promotes unrelated content.
+
+const TITLE_MATCH_STOPWORDS = new Set([
+  'the', 'a', 'an', 'by', 'of', 'to', 'for', 'and', 'in', 'on', 'with', 'your',
+  'my', 'our', 'how', 'what', 'did', 'i', 'about', 'from', 'de', 'la', 'el',
+  'los', 'las', 'un', 'una', 'que', 'mi',
+]);
+
+export function titleTokensFromSlug(slug: string): string[] {
+  // Drop the type prefix (kindle/web/youtube/...); deslugify the rest into tokens.
+  const parts = slug.split('/').filter(Boolean);
+  const tail = parts.slice(1).join(' ');
+  return tail
+    .replace(/-/g, ' ')
+    .replace(/[^a-z0-9 ]/gi, ' ')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+// Score = length of the longest contiguous run of a slug's title tokens that
+// appears as a whole phrase in the query (0 = no match). A run must carry real
+// signal: >=2 non-stopword tokens, or a single non-stopword token >=6 chars.
+export function titleMatchScore(query: string, slug: string): number {
+  const qstr = ' ' + query.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  const tokens = titleTokensFromSlug(slug);
+  let best = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    for (let j = tokens.length; j > i; j--) {
+      const run = tokens.slice(i, j);
+      const significant = run.filter((t) => !TITLE_MATCH_STOPWORDS.has(t));
+      const meaningful = significant.length >= 2 || (significant.length === 1 && significant[0].length >= 6);
+      if (!meaningful) continue;
+      const phrase = run.join(' ');
+      if (qstr.includes(' ' + phrase + ' ')) {
+        best = Math.max(best, phrase.length);
+        break; // longest run starting at i found
+      }
+    }
+  }
+  return best;
+}
+
+export function findTitleMatchedSlugs(query: string, slugs: string[]): string[] {
+  return slugs
+    .map((slug) => ({ slug, score: titleMatchScore(query, slug) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.slug);
+}
+
 async function handleContextPack(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const query = (url.searchParams.get('q') || url.searchParams.get('query') || '').trim();
@@ -623,22 +682,45 @@ async function handleContextPack(req: Request): Promise<Response> {
   try {
     const output = await gbrainExec(['query', query]);
     const results = parseGbrainOutput(output, limit * 2);
+    const resultBySlug = new Map<string, { title?: string; snippet?: string }>();
+    for (const r of results) {
+      const s = r.slug?.trim();
+      if (s && !resultBySlug.has(s)) resultBySlug.set(s, { title: r.title, snippet: r.snippet });
+    }
+
+    // Title-aware boost: surface captured pages the query names, ahead of semantic hits.
+    let titleSlugs: string[] = [];
+    try {
+      const listOutput = await loadClipBrainListOutput(gbrainExec, 500);
+      const captureSlugs = parseGbrainOutput(listOutput, 500)
+        .map((i) => i.slug?.trim())
+        .filter((s): s is string => !!s && isClipBrainCaptureSlug(s));
+      titleSlugs = findTitleMatchedSlugs(query, captureSlugs);
+    } catch (err: any) {
+      console.warn(`[context-pack] title-match skipped: ${err.message}`);
+    }
+
+    const orderedSlugs = [
+      ...titleSlugs,
+      ...results.map((r) => r.slug?.trim()).filter((s): s is string => !!s),
+    ];
+
     const sources: ContextPackSource[] = [];
     const seen = new Set<string>();
     const fetchLimit = limit * 2;
 
-    for (const result of results) {
-      const slug = result.slug?.trim();
-      if (!slug || seen.has(slug)) continue;
+    for (const slug of orderedSlugs) {
+      if (seen.has(slug)) continue;
       seen.add(slug);
 
       try {
         const content = await gbrainExec(['get', slug]);
+        const hint = resultBySlug.get(slug);
         sources.push(parseContextPackSource({
           slug,
           content,
-          fallbackTitle: result.title,
-          snippet: result.snippet,
+          fallbackTitle: hint?.title,
+          snippet: hint?.snippet,
           index: sources.length + 1,
         }));
       } catch (err: any) {

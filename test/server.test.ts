@@ -15,8 +15,55 @@ import {
   formatContextPackMarkdown,
   buildContextPack,
   selectContextPackSources,
+  findTitleMatchedSlugs,
+  titleMatchScore,
 } from '../server.ts';
 import type { CaptureLogEntry } from '../server.ts';
+
+describe('title-aware retrieval boost', () => {
+  const slugs = [
+    'kindle/cal-newport/deep-work',
+    'kindle/meditations-by-marcus-aurelius',
+    'youtube/the-7-most-powerful-moats-for-ai-startups',
+    'web/paulgraham-com/startupideas',
+  ];
+
+  test('named-book query surfaces the named book, not a thematically-similar one', () => {
+    const matched = findTitleMatchedSlugs('what did I highlight in Deep Work about focus', slugs);
+    expect(matched[0]).toBe('kindle/cal-newport/deep-work');
+    expect(matched).not.toContain('kindle/meditations-by-marcus-aurelius');
+  });
+
+  test('topic query that names no title returns no title matches', () => {
+    expect(findTitleMatchedSlugs('what have I read about decision making', slugs)).toEqual([]);
+  });
+
+  test('exact multi-word title phrase in query matches', () => {
+    const matched = findTitleMatchedSlugs('most powerful moats for AI startups', slugs);
+    expect(matched).toContain('youtube/the-7-most-powerful-moats-for-ai-startups');
+  });
+
+  test('author name in query matches the book', () => {
+    const matched = findTitleMatchedSlugs('what did marcus aurelius say', slugs);
+    expect(matched).toContain('kindle/meditations-by-marcus-aurelius');
+  });
+
+  test('single short/common title token does not over-match', () => {
+    // "work" alone (single token, <6 chars) must NOT trigger a match
+    expect(titleMatchScore('what is the work about', 'kindle/cal-newport/deep-work')).toBe(0);
+    // the full "deep work" phrase must match
+    expect(titleMatchScore('i did deep work today', 'kindle/cal-newport/deep-work')).toBeGreaterThan(0);
+  });
+
+  test('longer (more specific) title match ranks ahead of a shorter one', () => {
+    const matched = findTitleMatchedSlugs('deep work and meditations', [
+      'kindle/cal-newport/deep-work',
+      'kindle/meditations-by-marcus-aurelius',
+    ]);
+    expect(matched[0]).toBe('kindle/meditations-by-marcus-aurelius'); // "meditations" (11) > "deep work" (9)
+    expect(matched).toContain('kindle/cal-newport/deep-work');
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Helper: minimal valid PDF buffer with extractable text
