@@ -66,6 +66,7 @@ can display the floating clip button inside Gmail.
 |--------|-----|-----------------|
 | **Web articles** | Cmd+Shift+S on any page | Full article text via Readability.js |
 | **Tweets** | Cmd+Shift+S on any tweet | Tweet content + thread |
+| **X bookmarks** | Open [x.com/i/bookmarks](https://x.com/i/bookmarks), click **Import bookmarks to ClipBrain** | Every bookmarked tweet as its own page |
 | **Gmail threads** | Open Gmail, click **Enable Gmail** once in the popup, then use the floating button or Cmd+Shift+S | Subject, sender, date, and clean thread text |
 | **Kindle highlights** | One-click import from read.amazon.com | All highlights, notes, and book metadata |
 | **YouTube videos** | Cmd+Shift+S on any video | Full transcript with timestamps |

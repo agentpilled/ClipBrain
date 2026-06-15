@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- One-click bulk import of your X (Twitter) bookmarks. Open `x.com/i/bookmarks` and click **Import bookmarks to ClipBrain** — it auto-scrolls the timeline and saves every bookmarked tweet as its own searchable page, deduped by URL so re-importing is safe.
+
 ## [0.1.0] - 2026-06-06
 
 Initial public release. Clip web pages, tweets, Kindle highlights, Gmail threads, YouTube transcripts, and PDFs into a local-first, agent-ready memory layer your AI tools can search over MCP. One shortcut (Cmd+Shift+S) and your AI never starts from zero.

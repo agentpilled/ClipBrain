@@ -26,6 +26,11 @@
       "matches": ["https://read.amazon.com/notebook*"],
       "js": ["kindle-content-script.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["x-content-script.js"],
+      "run_at": "document_idle"
     }
   ],
   "action": {
