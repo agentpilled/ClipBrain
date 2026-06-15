@@ -14,6 +14,7 @@ import {
   parseContextPackSource,
   formatContextPackMarkdown,
   buildContextPack,
+  aggregatePackConnections,
   selectContextPackSources,
   findTitleMatchedSlugs,
   titleMatchScore,
@@ -156,6 +157,59 @@ A summary.
     const src = parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content: selfRef });
     expect(src.related).not.toContain('[[deep work]]');
     expect(src.related).toContain('[[meditations]]');
+  });
+});
+
+describe('context pack aggregates pack-level connections (You Also Saved)', () => {
+  // Two in-pack sources. Deep Work links to [[meditations]] + [[range]];
+  // Atomic Habits links to [[meditations]] (shared) and [[deep work]] (already
+  // in the pack → must be excluded from "also saved").
+  const deepWork = `---\ntitle: Deep Work\ntype: note\n---\n\n## Related\n- [[meditations]] — mental clarity.\n- [[range]] — deliberate practice.\n`;
+  const atomicHabits = `---\ntitle: Atomic Habits\ntype: note\n---\n\n## Related\n- [[meditations]] — focus and calm.\n- [[deep work]] — already in this pack.\n`;
+
+  const sources = [
+    parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content: deepWork, index: 1 }),
+    parseContextPackSource({ slug: 'kindle/james-clear/atomic-habits', content: atomicHabits, index: 2 }),
+  ];
+
+  test('aggregates cross-source connections, ranked by how many sources mention them', () => {
+    const conns = aggregatePackConnections(sources);
+    const titles = conns.map((c) => c.title.toLowerCase());
+    expect(titles).toContain('meditations');
+    expect(titles).toContain('range');
+    // meditations is referenced by both sources → strongest → ranked first.
+    expect(conns[0].title.toLowerCase()).toBe('meditations');
+    expect(conns[0].mentionedBy).toBe(2);
+  });
+
+  test('excludes connections that are already sources in the pack', () => {
+    const titles = aggregatePackConnections(sources).map((c) => c.title.toLowerCase());
+    expect(titles).not.toContain('deep work'); // in-pack → not an "also saved"
+  });
+
+  test('formatted markdown renders a You Also Saved section with strength', () => {
+    const md = formatContextPackMarkdown('focus and habits', sources);
+    expect(md).toContain('## You Also Saved');
+    expect(md).toContain('[[meditations]] — connected to 2 of these sources');
+    const alsoSaved = md.slice(md.indexOf('## You Also Saved'));
+    expect(alsoSaved).toContain('[[range]]');
+    expect(alsoSaved.toLowerCase()).not.toContain('deep work'); // excluded from this section
+  });
+
+  test('buildContextPack populates the connections field', () => {
+    const pack = buildContextPack('focus and habits', sources);
+    expect(pack.connections.length).toBeGreaterThan(0);
+    expect(pack.connections.some((c) => c.title.toLowerCase() === 'meditations')).toBe(true);
+  });
+
+  test('no connections yields no You Also Saved section', () => {
+    const plain = parseContextPackSource({
+      slug: 'web/example-com/x',
+      content: `---\ntitle: X\ntype: web\n---\n\n## Summary\nNo related.\n`,
+      index: 1,
+    });
+    expect(aggregatePackConnections([plain])).toEqual([]);
+    expect(formatContextPackMarkdown('q', [plain])).not.toContain('You Also Saved');
   });
 });
 

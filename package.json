@@ -1,6 +1,6 @@
 {
   "name": "clipbrain",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Local memory layer for AI agents",
   "private": true,
   "scripts": {

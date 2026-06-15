@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.5] - 2026-06-15
+
+Your AI now sees the bigger picture across a whole answer. The context pack adds a **"You Also Saved"** section: related notes already in your brain that your question didn't directly surface — aggregated across every source in the answer, ranked by how many of them connect to it, with anything already shown filtered out. Ask about a topic and your AI can point you to the connected reading you forgot you saved, not just the literal matches. Builds on v0.2.3's per-source connections, lifting them to the level of the whole pack.
+
 ## [0.2.4] - 2026-06-09
 
 Two retrieval-quality polish fixes. Context-pack snippets now always show meaningful text instead of occasionally surfacing a bare section heading (like `## Highlights`). And a page's connections no longer list the page itself — the "Related" links drop self-references, so you only see genuine connections to other captures.

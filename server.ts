@@ -382,10 +382,16 @@ export type ContextPackSource = {
   sourceUrl?: string;
 };
 
+export type PackConnection = {
+  title: string;
+  mentionedBy: number;
+};
+
 export type ContextPack = {
   query: string;
   generatedAt: string;
   sources: ContextPackSource[];
+  connections: PackConnection[];
   markdown: string;
 };
 
@@ -747,6 +753,7 @@ export function buildContextPack(query: string, sources: ContextPackSource[]): C
     query,
     generatedAt,
     sources,
+    connections: aggregatePackConnections(sources),
     markdown: formatContextPackMarkdown(query, sources, generatedAt),
   };
 }
@@ -775,6 +782,46 @@ export function selectContextPackSources(sources: ContextPackSource[], limit: nu
     ...source,
     id: `S${index + 1}`,
   }));
+}
+
+const PACK_CONNECTIONS_CAP = 8;
+
+// Pack-level "You Also Saved": aggregate the per-source ## Related links across
+// every source in the pack, drop anything already shown in the pack (those are
+// not "also" — they're already here), and surface the net-new connections,
+// ranked by how many of the pack's sources reference them. This is the "alive"
+// layer: the brain volunteering related reading you forgot you saved, instead of
+// only answering the literal query.
+export function aggregatePackConnections(sources: ContextPackSource[]): PackConnection[] {
+  // Everything already in the pack is, by definition, not an "also saved".
+  const inPack = new Set<string>();
+  for (const s of sources) {
+    const t = normalizeContextPackTitle(s.title);
+    if (t) inPack.add(t);
+    const slugTail = normalizeContextPackTitle((s.slug.split('/').pop() || '').replace(/-/g, ' '));
+    if (slugTail) inPack.add(slugTail);
+  }
+
+  const byKey = new Map<string, { title: string; mentionedBy: number }>();
+  for (const s of sources) {
+    if (!s.related) continue;
+    const seenHere = new Set<string>(); // count each connection at most once per source
+    for (const rawLine of s.related.split('\n')) {
+      const m = rawLine.match(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/);
+      if (!m) continue; // only navigable [[wikilink]] connections
+      const display = m[1].trim();
+      const key = normalizeContextPackTitle(display.replace(/-/g, ' '));
+      if (!key || inPack.has(key) || seenHere.has(key)) continue;
+      seenHere.add(key);
+      const existing = byKey.get(key);
+      if (existing) existing.mentionedBy += 1;
+      else byKey.set(key, { title: display, mentionedBy: 1 });
+    }
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => b.mentionedBy - a.mentionedBy)
+    .slice(0, PACK_CONNECTIONS_CAP);
 }
 
 export function parseContextPackSource(opts: {
@@ -948,6 +995,20 @@ export function formatContextPackMarkdown(query: string, sources: ContextPackSou
       }
     }
 
+    lines.push('');
+  }
+
+  // Pack-level connections — related reading already in the brain that the query
+  // didn't directly surface. The "alive" payoff: what you know, not just what you asked.
+  const connections = aggregatePackConnections(sources);
+  if (connections.length > 0) {
+    lines.push('## You Also Saved');
+    lines.push('');
+    lines.push('Related notes already in your brain, connected to what you asked — not shown above:');
+    for (const c of connections) {
+      const strength = c.mentionedBy > 1 ? ` — connected to ${c.mentionedBy} of these sources` : '';
+      lines.push(`- [[${c.title}]]${strength}`);
+    }
     lines.push('');
   }
 
