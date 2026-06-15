@@ -791,7 +791,9 @@ export function parseContextPackSource(opts: {
   const tags = parseMarkdownTags(opts.content);
   const atoms = parseKnowledgeAtoms(opts.content);
   const sourceUrl = frontmatter.source_url || frontmatter.source;
-  const snippet = cleanContextSnippet(opts.snippet || firstMeaningfulBodyText(opts.content));
+  // Prefer the retrieval snippet, but if it cleans to nothing (e.g. it was just a
+  // heading like "## Highlights"), fall back to the first meaningful body text.
+  const snippet = cleanContextSnippet(opts.snippet || '') || cleanContextSnippet(firstMeaningfulBodyText(opts.content));
 
   // Raw user highlights/notes — the actual answer to "what did I highlight in X".
   // The enrichment summary/atoms are derived; this is the source-of-truth content.
@@ -812,6 +814,19 @@ export function parseContextPackSource(opts: {
   // notes. Surfacing them lets the agent proactively point at related reading
   // the user might have forgotten ("the brain is alive, not a filing cabinet").
   let related = parseMarkdownSection(opts.content, 'Related');
+  // Drop self-referential links (a page linking to its own title/slug — enrichment noise).
+  const selfRefKeys = new Set([
+    normalizeContextPackTitle(title),
+    normalizeContextPackTitle((opts.slug.split('/').pop() || '').replace(/-/g, ' ')),
+  ]);
+  related = related
+    .split('\n')
+    .filter((line) => {
+      const m = line.match(/\[\[([^\]|]+)/);
+      return !m || !selfRefKeys.has(normalizeContextPackTitle(m[1].replace(/-/g, ' ')));
+    })
+    .join('\n')
+    .trim();
   const RELATED_CAP = 1500;
   if (related.length > RELATED_CAP) {
     const slice = related.slice(0, RELATED_CAP);
@@ -1004,7 +1019,15 @@ function firstMeaningfulBodyText(markdown: string): string {
 }
 
 function cleanContextSnippet(snippet: string): string {
-  return snippet.replace(/\s+/g, ' ').trim().slice(0, 500);
+  // Drop markdown heading lines so the snippet is meaningful text, not "## Highlights".
+  return snippet
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/^#{1,6}\s/.test(l))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500);
 }
 
 function normalizeContextPackTitle(title: string): string {

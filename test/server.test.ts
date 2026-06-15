@@ -150,6 +150,29 @@ A summary.
     const src = parseContextPackSource({ slug: 'web/example-com/y', content: c });
     expect(src.related).toBe('');
   });
+
+  test('drops self-referential Related links (page linking to itself)', () => {
+    const selfRef = `---\ntitle: Deep Work by Cal Newport\ntype: note\n---\n\n## Related\n- [[deep work]] — self-reference noise.\n- [[meditations]] — a real connection.\n`;
+    const src = parseContextPackSource({ slug: 'kindle/cal-newport/deep-work', content: selfRef });
+    expect(src.related).not.toContain('[[deep work]]');
+    expect(src.related).toContain('[[meditations]]');
+  });
+});
+
+describe('context pack snippet is clean text, never a bare heading', () => {
+  test('falls back to body text when the retrieval snippet is just a heading', () => {
+    const c = `---\ntitle: Deep Work\ntype: note\n---\n\n## Highlights\n> Focus is the new IQ\n`;
+    const src = parseContextPackSource({ slug: 'kindle/deep-work', content: c, snippet: '## Highlights' });
+    expect(src.snippet).not.toMatch(/^#/);
+    expect(src.snippet.length).toBeGreaterThan(0);
+    expect(src.snippet).toContain('Focus is the new IQ');
+  });
+
+  test('strips heading lines out of a multi-line retrieval snippet', () => {
+    const c = `---\ntitle: A\ntype: note\n---\n\nbody\n`;
+    const src = parseContextPackSource({ slug: 'web/a/b', content: c, snippet: '## Heading\nReal snippet text.' });
+    expect(src.snippet).toBe('Real snippet text.');
+  });
 });
 
 // ---------------------------------------------------------------------------

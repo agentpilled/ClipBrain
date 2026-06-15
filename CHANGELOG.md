@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.4] - 2026-06-09
+
+Two retrieval-quality polish fixes. Context-pack snippets now always show meaningful text instead of occasionally surfacing a bare section heading (like `## Highlights`). And a page's connections no longer list the page itself — the "Related" links drop self-references, so you only see genuine connections to other captures.
+
 ## [0.2.3] - 2026-06-09
 
 Your AI now sees the **connections** between your captures. When you ask about something, the context pack includes each source's related notes — the auto-computed "see also" links to other things you've saved on the topic — so your AI can point you to related reading you might have forgotten. The first step toward a brain that surfaces what you know, not just what you literally asked for.
