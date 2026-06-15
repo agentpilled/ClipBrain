@@ -10,3 +10,4 @@ bin/*
 .mailmap-rewrite
 .impeccable.md
 test-new-*
+store/dist/

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ClipBrain",
-  "version": "0.1.0",
-  "description": "Capture web content into your ClipBrain knowledge base",
+  "version": "0.2.4",
+  "description": "Clip web pages, tweets, Kindle highlights & videos into a local memory your AI can search.",
   "permissions": ["storage", "alarms", "activeTab", "scripting", "tabs"],
   "host_permissions": [
     "http://localhost:19285/*",
