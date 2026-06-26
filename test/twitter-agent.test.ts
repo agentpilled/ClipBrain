@@ -76,6 +76,24 @@ describe('twitter agent helpers', () => {
     });
   });
 
+  test('detects reply and analogy traits from local voice samples', () => {
+    const samples = parseVoiceSamples([
+      '# Local samples',
+      '',
+      '```text',
+      'Very cool. Think of Readwise but for agents.',
+      '```',
+      '',
+      '```text',
+      'Hey Luca, you will probably like this!!',
+      '```',
+    ].join('\n'));
+
+    expect(samples?.traits).toContain('uses warm direct reply openers');
+    expect(samples?.traits).toContain('uses memorable product analogies');
+    expect(samples?.traits).toContain('allows enthusiastic punctuation when earned');
+  });
+
   test('generates a complete draft pack from repo signals', () => {
     const pack = generateDraftPack(signals());
 

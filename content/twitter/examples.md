@@ -72,6 +72,14 @@ Good:
 This is exactly where memory gets interesting. Tools let agents act, but saved context tells them what matters to you.
 ```
 
+```text
+Very cool. This is the shape I keep coming back to with ClipBrain: not another place to store links, but context your agents can actually use later.
+```
+
+```text
+Yeah. The interesting bit is Kindle highlights, blogs, videos, and saved posts all becoming one cited memory layer for the AI you already use.
+```
+
 Bad:
 
 ```text

@@ -223,7 +223,7 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
     label: 'Why ClipBrain exists',
     posts: [
       'Agents are getting better at doing work.\n\nBut most of them still start every task with a blank memory.',
-      'That context is scattered everywhere:\n\nKindle highlights, articles, PDFs, YouTube transcripts, Gmail threads, old notes, half-remembered links.',
+      'That context is scattered everywhere:\n\nKindle highlights, articles, PDFs, YouTube transcripts, newsletters, old notes, half-remembered links.',
       'ClipBrain turns those saved things into local, searchable, cited memory for MCP agents.\n\nNot a hosted cloud brain. Not a manual prompt dump. A local memory layer.',
       `The current build focus: ${primary}.\n\nI want every improvement to make the first useful agent handoff faster, clearer, or more trustworthy.`,
       'The feeling I am chasing:\n\nclip something once, then later ask your AI a real question and get an answer grounded in what you actually read.',
@@ -245,17 +245,17 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
     {
       label: 'Reply to agent tooling discussion',
       why: 'Adds a useful angle without hijacking the thread.',
-      text: 'Tools let agents act. Memory tells them what matters to you. I think the next jump is making saved context reliable enough that agents can cite it and use it without manual prompt assembly.',
+      text: 'Very cool. Tools let agents act, but memory tells them what matters to you. That is the gap I am building toward with ClipBrain: clip the internet once, then let your AI pull cited context later.',
     },
     {
       label: 'Reply to second brain discussion',
       why: 'Positions ClipBrain as agent-native, not another notes app.',
-      text: 'The interesting shift is from "a place I can search later" to "context my agents can use now." Same raw material, totally different product bar.',
+      text: 'Exactly. The shift is from "a place I can search later" to "context my agents can use now." Same Kindle highlights, blogs, posts, videos. Totally different product bar.',
     },
     {
       label: 'Reply to local-first AI discussion',
       why: 'Keeps privacy/local-first as a product quality point.',
-      text: 'Local-first should not feel like a downgrade. The magic is when setup, capture, retrieval, and citations all feel fast while the user still owns the memory layer.',
+      text: 'Local-first should still feel magical. I want setup, capture, retrieval, and citations to feel fast enough that owning the memory layer does not feel like a tax.',
     },
   ];
 
@@ -452,6 +452,9 @@ function summarizeVoiceTraits(samples: string[]): string[] {
   const memorySources = has(/\b(kindle|highlight|blog|tweet|saved|youtube|pdf|note|clip)\b/i);
   const proof = has(/\b(demo|video|screenshot|build|repo|commit|shipped|added|fixed)\b/i);
   const externalSpark = has(/@\w+|\bposted about\b|\bopen sourced\b/i);
+  const warmReply = has(/\b(hey|very cool|appreciate|glad you liked|you.?ll probably like|haha)\b/i);
+  const analogy = has(/\b(readwise|plumbing|paint|taste|brain for|favorite ai|superpowers)\b/i);
+  const enthusiasm = has(/!{2,}|\.{3}|…/);
   const lowercaseStart = samples.filter(sample => /^[a-z]/.test(sample.trim())).length;
   const compact = samples.filter(sample => sample.length <= 280).length;
 
@@ -460,6 +463,9 @@ function summarizeVoiceTraits(samples: string[]): string[] {
     some(memorySources) ? 'anchored in concrete memory sources' : undefined,
     some(proof) ? 'pairs claims with build or demo proof' : undefined,
     some(externalSpark) ? 'uses external sparks/references' : undefined,
+    some(warmReply) ? 'uses warm direct reply openers' : undefined,
+    some(analogy) ? 'uses memorable product analogies' : undefined,
+    some(enthusiasm) ? 'allows enthusiastic punctuation when earned' : undefined,
     halfOrMore(lowercaseStart) ? 'often starts lowercase' : undefined,
     halfOrMore(compact) ? 'mostly short-post length' : undefined,
   ].filter((trait): trait is string => !!trait);

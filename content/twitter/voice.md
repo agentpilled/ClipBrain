@@ -23,6 +23,9 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - Public constraints: what is local, what is optional, what is still rough
 - Founder-origin framing: personal itch -> external spark -> build proof
 - The concrete memory sources from the pinned post: Kindle highlights, saved posts, blogs, YouTube, PDFs, notes
+- Warm direct replies: name the person or idea first, acknowledge the thread, then bridge to ClipBrain only if it adds something real
+- Memorable analogies when they clarify the product: Readwise for agents, clips into GBrain, OpenClaw's brain for the internet, plumbing vs paint
+- Casual lowercase is allowed, but it should look intentional rather than sloppy
 
 ## Avoid
 
@@ -35,6 +38,8 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - Claims that ClipBrain publishes to X or works as a hosted cloud service
 - Posts that could apply to any AI product if you replaced the name
 - Corporate launch voice that clashes with the `creating creates creativity` profile
+- Copy-pasting the same founder-origin story too often
+- Imitating typos from old posts; keep the looseness, raise the quality bar
 
 ## Reusable Lines
 
@@ -46,6 +51,8 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - A bookmark is inert. A clip should become usable context.
 - The product is not done when capture works. It is done when the first useful agent answer feels obvious.
 - That is the difference between search and memory.
+- Think of Readwise, but for the agents actually doing work with you.
+- ClipBrain is the memory layer between everything you read and the AI you already use.
 
 ## Editing Heuristic
 
@@ -56,3 +63,4 @@ Before posting, ask:
 3. Does the post reveal anything from private captures?
 4. Would this still be interesting if nobody knew ClipBrain existed?
 5. Does this sound like `@agentpilled`, or did it drift into generic product marketing?
+6. If this is a reply, did I make the other person's thread better before mentioning ClipBrain?

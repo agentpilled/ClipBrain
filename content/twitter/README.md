@@ -43,6 +43,10 @@ Paste one real post or reply per fenced text block. The local file is gitignored
 the agent summarizes its style signals without printing the raw samples in draft
 packs.
 
+Only use public posts/replies or an explicit export you are comfortable using
+for drafting. Do not paste DMs, notifications, private emails, customer content,
+or private captures into the voice sample file.
+
 ## Useful options
 
 ```bash

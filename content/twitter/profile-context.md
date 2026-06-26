@@ -27,6 +27,8 @@ Captured from public X data on 2026-06-26.
 - The pinned post worked because it was specific, aspirational, and save-worthy for builders.
 - Bookmarks materially outpaced likes, which suggests the audience saved it as a useful reference or future tool, not just a vibe post.
 - The bio is abstract and playful; ClipBrain posts can be slightly weird, but product proof has to carry the weight.
+- Reply voice is warm and direct: acknowledge the other builder first, then bridge to ClipBrain only when the connection is genuinely relevant.
+- The best reusable mental models are concrete analogies: Readwise for agents/OpenClaw, clips into GBrain, Codex as plumbing and Claude as paint.
 
 ## Content Implications
 
@@ -36,10 +38,20 @@ Captured from public X data on 2026-06-26.
 - A good ClipBrain post should usually include one of: demo video, screenshot, repo diff, local command, changelog, or specific workflow.
 - Continue the pinned narrative instead of replacing it: one place for what I know, made usable by agents.
 - Avoid generic "agents need memory" takes unless they point back to a concrete personal workflow.
+- Do not over-repeat the exact origin story block. For public launch, evolve it into new proof: a cleaner demo, a Kindle import walkthrough, a context-pack answer, or a real repo milestone.
+- For replies, open with the thread's topic, then make ClipBrain the useful next thought. Avoid naked "check this out" promotion.
+
+## Chrome Voice Sampling - 2026-06-26
+
+- Read-only logged-in Chrome sampling captured 18 clean public posts/replies into ignored `content/twitter/voice-samples.local.md`.
+- Two visibly truncated X posts were intentionally omitted from the local samples.
+- Observed pattern: short standalone posts carry the product thesis; replies are warmer and often reuse the founder story when the surrounding thread is a fit.
+- Observed pattern: the account mixes casual lowercase builder voice with strong product specificity.
+- Operational rule: raw tweet text stays local and gitignored; tracked docs keep only summarized style signals.
 
 ## Current Limits
 
 - Public X profile and GraphQL exposed profile metadata, the pinned post, and highlighted post.
 - Public profile timeline returned empty through `UserTweets`; `UserTweetsAndReplies` and search routes were not available through the tested guest flow.
 - TwStalker direct profile access was blocked by Cloudflare.
-- For richer voice calibration, use one of: a direct export of recent tweets, a pasted sample of 10-20 posts/replies, or explicit approval to inspect the logged-in browser session.
+- Richer voice calibration now depends on refreshing `content/twitter/voice-samples.local.md` from public posts/replies or a direct export.
