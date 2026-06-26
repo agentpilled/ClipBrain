@@ -9,8 +9,8 @@ bun run twitter:draft
 ```
 
 The command reads public repo signals such as recent commits, `CHANGELOG.md`,
-`README.md`, and `content/twitter/profile-context.md`, then writes a daily
-draft pack to:
+`README.md`, `content/twitter/profile-context.md`, and optional local voice
+samples, then writes a daily draft pack to:
 
 ```bash
 content/twitter/drafts/YYYY-MM-DD.md
@@ -32,6 +32,16 @@ The agent does not call the X API, schedule posts, or publish anything.
 `profile-context.md` contains public profile-level calibration for
 `@agentpilled`. Update it when a new pinned post, strong post, or export gives a
 better signal for voice and audience.
+
+For raw voice samples, copy `content/twitter/voice-samples.example.md` to:
+
+```bash
+content/twitter/voice-samples.local.md
+```
+
+Paste one real post or reply per fenced text block. The local file is gitignored;
+the agent summarizes its style signals without printing the raw samples in draft
+packs.
 
 ## Useful options
 

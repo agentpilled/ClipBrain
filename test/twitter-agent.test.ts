@@ -7,6 +7,7 @@ import {
   generateDraftPack,
   parseArgs,
   parseGitLog,
+  parseVoiceSamples,
   runTwitterAgent,
 } from '../twitter-agent.ts';
 import type { RepoSignals } from '../twitter-agent.ts';
@@ -48,6 +49,33 @@ describe('twitter agent helpers', () => {
     });
   });
 
+  test('summarizes local voice samples without exposing raw text', () => {
+    const samples = parseVoiceSamples([
+      '# Local samples',
+      '',
+      '```text',
+      'i read something once.',
+      'my agents can use it later.',
+      '```',
+      '',
+      '```text',
+      'Then @karpathy posted about personal knowledge bases and that became the demo.',
+      '```',
+    ].join('\n'));
+
+    expect(samples).toEqual({
+      count: 2,
+      averageChars: 64,
+      traits: [
+        'mostly first-person',
+        'pairs claims with build or demo proof',
+        'uses external sparks/references',
+        'often starts lowercase',
+        'mostly short-post length',
+      ],
+    });
+  });
+
   test('generates a complete draft pack from repo signals', () => {
     const pack = generateDraftPack(signals());
 
@@ -59,6 +87,7 @@ describe('twitter agent helpers', () => {
     expect(pack.editorChecklist.join('\n')).toContain('screenshot');
     expect(pack.warnings.join('\n')).toContain('Draft-only');
     expect(pack.sourceSignals.join('\n')).toContain('Commit abc1234');
+    expect(pack.sourceSignals.join('\n')).toContain('Voice samples:');
   });
 
   test('formats draft pack as reviewable markdown', () => {
@@ -122,5 +151,10 @@ function signals(): RepoSignals {
       { hash: 'abc1234', message: 'Add Twitter draft agent' },
       { hash: 'def5678', message: 'Fix context pack snippets' },
     ],
+    voiceSamples: {
+      count: 2,
+      averageChars: 120,
+      traits: ['mostly first-person', 'anchored in concrete memory sources'],
+    },
   };
 }

@@ -13,3 +13,4 @@ test-new-*
 store/dist/
 content/twitter/drafts/*.md
 !content/twitter/drafts/.gitkeep
+content/twitter/voice-samples.local.md

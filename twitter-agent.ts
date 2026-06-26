@@ -21,6 +21,13 @@ export type RepoSignals = {
   latestChangelog?: ChangelogSignal;
   recentCommits: GitCommit[];
   profileContext?: string;
+  voiceSamples?: VoiceSampleSignals;
+};
+
+export type VoiceSampleSignals = {
+  count: number;
+  averageChars: number;
+  traits: string[];
 };
 
 export type TweetDraft = {
@@ -73,6 +80,7 @@ const DEFAULT_COMMIT_LIMIT = 6;
 const DEFAULT_OUT_DIR = 'content/twitter/drafts';
 const DEFAULT_VALUE_PROP = 'Clip anything into agent-ready memory.';
 const PROFILE_CONTEXT_PATH = 'content/twitter/profile-context.md';
+const VOICE_SAMPLES_PATH = 'content/twitter/voice-samples.local.md';
 
 export function parseArgs(argv: string[]): TwitterAgentOptions & { help?: boolean } {
   const opts: TwitterAgentOptions & { help?: boolean } = {};
@@ -111,10 +119,11 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
   const commitLimit = opts.commitLimit || DEFAULT_COMMIT_LIMIT;
   const commandRunner = opts.commandRunner || runCommand;
 
-  const [readme, changelog, profileContext, gitLog] = await Promise.all([
+  const [readme, changelog, profileContext, voiceSamples, gitLog] = await Promise.all([
     readRepoFile(cwd, 'README.md'),
     readRepoFile(cwd, 'CHANGELOG.md'),
     readRepoFile(cwd, PROFILE_CONTEXT_PATH),
+    readRepoFile(cwd, VOICE_SAMPLES_PATH),
     commandRunner(['git', 'log', '--oneline', '-n', String(commitLimit)], cwd)
       .then(result => result.exitCode === 0 ? result.stdout : ''),
   ]);
@@ -126,6 +135,7 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
     latestChangelog: extractLatestChangelog(changelog),
     recentCommits: parseGitLog(gitLog),
     profileContext,
+    voiceSamples: parseVoiceSamples(voiceSamples),
   };
 }
 
@@ -261,6 +271,9 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
       'Pick one post and make it more specific before posting.',
       'Check profile fit: does this sound like @agentpilled, or like generic product marketing?',
       'Continue the pinned origin story when possible: personal itch, trusted external spark, build proof.',
+      signals.voiceSamples
+        ? `Compare against ${signals.voiceSamples.count} local voice sample(s) without quoting them verbatim.`
+        : `Add 10-20 posts or replies to ${VOICE_SAMPLES_PATH} for stronger voice calibration.`,
       'Attach a screenshot or short screen recording if the post claims product magic.',
       'Remove private captures, email content, exact corpus counts, and provider/API details.',
       'If a post is over 280 characters, either trim it or intentionally post it as a long-form X post.',
@@ -377,11 +390,33 @@ export function extractLatestChangelog(changelog: string): ChangelogSignal | und
   };
 }
 
+export function parseVoiceSamples(markdown: string): VoiceSampleSignals | undefined {
+  const samples = [...markdown.matchAll(/```(?:text|tweet)?\n([\s\S]*?)```/g)]
+    .map(match => match[1].trim())
+    .filter(Boolean);
+
+  if (samples.length === 0) return undefined;
+
+  const averageChars = Math.round(
+    samples.reduce((sum, sample) => sum + sample.length, 0) / samples.length,
+  );
+  const traits = summarizeVoiceTraits(samples);
+
+  return {
+    count: samples.length,
+    averageChars,
+    traits,
+  };
+}
+
 function formatSourceSignals(signals: RepoSignals): string[] {
   const sourceSignals = [`Value prop: ${signals.valueProp}`];
   const profileSummary = summarizeProfileContext(signals.profileContext);
 
   if (profileSummary) sourceSignals.push(`X profile: ${profileSummary}`);
+  if (signals.voiceSamples) {
+    sourceSignals.push(`Voice samples: ${formatVoiceSampleSignals(signals.voiceSamples)}`);
+  }
 
   if (signals.topic) sourceSignals.push(`Topic: ${signals.topic}`);
 
@@ -399,6 +434,35 @@ function formatSourceSignals(signals: RepoSignals): string[] {
   }
 
   return sourceSignals;
+}
+
+function formatVoiceSampleSignals(samples: VoiceSampleSignals): string {
+  const traitSummary = samples.traits.length > 0
+    ? `; ${samples.traits.join('; ')}`
+    : '';
+  return `${samples.count} local sample(s), avg ${samples.averageChars} chars${traitSummary}`;
+}
+
+function summarizeVoiceTraits(samples: string[]): string[] {
+  const has = (pattern: RegExp) => samples.filter(sample => pattern.test(sample)).length;
+  const halfOrMore = (count: number) => count / samples.length >= 0.5;
+  const some = (count: number) => count > 0;
+
+  const firstPerson = has(/\b(i|i'm|i.?ve|my|me)\b/i);
+  const memorySources = has(/\b(kindle|highlight|blog|tweet|saved|youtube|pdf|note|clip)\b/i);
+  const proof = has(/\b(demo|video|screenshot|build|repo|commit|shipped|added|fixed)\b/i);
+  const externalSpark = has(/@\w+|\bposted about\b|\bopen sourced\b/i);
+  const lowercaseStart = samples.filter(sample => /^[a-z]/.test(sample.trim())).length;
+  const compact = samples.filter(sample => sample.length <= 280).length;
+
+  return [
+    halfOrMore(firstPerson) ? 'mostly first-person' : undefined,
+    some(memorySources) ? 'anchored in concrete memory sources' : undefined,
+    some(proof) ? 'pairs claims with build or demo proof' : undefined,
+    some(externalSpark) ? 'uses external sparks/references' : undefined,
+    halfOrMore(lowercaseStart) ? 'often starts lowercase' : undefined,
+    halfOrMore(compact) ? 'mostly short-post length' : undefined,
+  ].filter((trait): trait is string => !!trait);
 }
 
 function summarizeProfileContext(profileContext?: string): string | undefined {
