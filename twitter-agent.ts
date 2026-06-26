@@ -20,6 +20,7 @@ export type RepoSignals = {
   valueProp: string;
   latestChangelog?: ChangelogSignal;
   recentCommits: GitCommit[];
+  profileContext?: string;
 };
 
 export type TweetDraft = {
@@ -71,6 +72,7 @@ type TwitterAgentOptions = {
 const DEFAULT_COMMIT_LIMIT = 6;
 const DEFAULT_OUT_DIR = 'content/twitter/drafts';
 const DEFAULT_VALUE_PROP = 'Clip anything into agent-ready memory.';
+const PROFILE_CONTEXT_PATH = 'content/twitter/profile-context.md';
 
 export function parseArgs(argv: string[]): TwitterAgentOptions & { help?: boolean } {
   const opts: TwitterAgentOptions & { help?: boolean } = {};
@@ -109,9 +111,10 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
   const commitLimit = opts.commitLimit || DEFAULT_COMMIT_LIMIT;
   const commandRunner = opts.commandRunner || runCommand;
 
-  const [readme, changelog, gitLog] = await Promise.all([
+  const [readme, changelog, profileContext, gitLog] = await Promise.all([
     readRepoFile(cwd, 'README.md'),
     readRepoFile(cwd, 'CHANGELOG.md'),
+    readRepoFile(cwd, PROFILE_CONTEXT_PATH),
     commandRunner(['git', 'log', '--oneline', '-n', String(commitLimit)], cwd)
       .then(result => result.exitCode === 0 ? result.stdout : ''),
   ]);
@@ -122,6 +125,7 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
     valueProp: extractReadmeValueProp(readme),
     latestChangelog: extractLatestChangelog(changelog),
     recentCommits: parseGitLog(gitLog),
+    profileContext,
   };
 }
 
@@ -134,16 +138,18 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
 
   const shortPosts: TweetDraft[] = [
     {
-      label: 'Agent memory thesis',
-      why: 'Lead with the category, not the feature list.',
+      label: 'Pinned story follow-up',
+      why: 'Continues the public origin story instead of sounding like a cold launch post.',
       text: [
-        'Agents got tools before they got memory.',
+        'the thing i want from ClipBrain is simple:',
         '',
-        'They can edit files, call APIs, and run commands.',
+        'i read something once.',
+        'my agents can use it later.',
         '',
-        'But they still start cold if they cannot see what shaped your thinking.',
+        'kindle highlights, clips, pdfs, saved posts, videos.',
         '',
-        'That is the weird gap I am trying to close with ClipBrain.',
+        'not as a folder.',
+        'as working memory.',
       ].join('\n'),
     },
     {
@@ -253,6 +259,8 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
     warnings: buildWarnings(shortPosts, thread, replies),
     editorChecklist: [
       'Pick one post and make it more specific before posting.',
+      'Check profile fit: does this sound like @agentpilled, or like generic product marketing?',
+      'Continue the pinned origin story when possible: personal itch, trusted external spark, build proof.',
       'Attach a screenshot or short screen recording if the post claims product magic.',
       'Remove private captures, email content, exact corpus counts, and provider/API details.',
       'If a post is over 280 characters, either trim it or intentionally post it as a long-form X post.',
@@ -371,6 +379,9 @@ export function extractLatestChangelog(changelog: string): ChangelogSignal | und
 
 function formatSourceSignals(signals: RepoSignals): string[] {
   const sourceSignals = [`Value prop: ${signals.valueProp}`];
+  const profileSummary = summarizeProfileContext(signals.profileContext);
+
+  if (profileSummary) sourceSignals.push(`X profile: ${profileSummary}`);
 
   if (signals.topic) sourceSignals.push(`Topic: ${signals.topic}`);
 
@@ -390,9 +401,33 @@ function formatSourceSignals(signals: RepoSignals): string[] {
   return sourceSignals;
 }
 
+function summarizeProfileContext(profileContext?: string): string | undefined {
+  if (!profileContext?.trim()) return undefined;
+
+  const handle = matchMarkdownListValue(profileContext, 'Handle');
+  const bio = matchMarkdownListValue(profileContext, 'Bio');
+  const performance = matchMarkdownListValue(profileContext, 'Public performance at capture');
+
+  return [
+    handle,
+    bio ? `bio "${bio}"` : undefined,
+    performance ? `pinned post: ${performance}` : undefined,
+  ].filter(Boolean).join('; ');
+}
+
+function matchMarkdownListValue(markdown: string, label: string): string | undefined {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = markdown.match(new RegExp(`^- ${escaped}: (.+)$`, 'm'));
+  return match?.[1]?.trim();
+}
+
 function primaryBuildSignal(signals: RepoSignals): string {
   if (signals.topic) return `${signals.topic} from clone to first useful agent answer`;
-  if (signals.latestChangelog?.notes[0]) return truncateForSentence(signals.latestChangelog.notes[0]);
+  const latestNote = signals.latestChangelog?.notes[0];
+  if (/you also saved/i.test(latestNote || '')) {
+    return 'You Also Saved pack-level connections from exact matches to related saved context';
+  }
+  if (latestNote) return truncateForSentence(latestNote);
   if (signals.recentCommits[0]?.message) return humanizeCommit(signals.recentCommits[0].message);
   return signals.valueProp;
 }

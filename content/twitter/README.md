@@ -9,7 +9,8 @@ bun run twitter:draft
 ```
 
 The command reads public repo signals such as recent commits, `CHANGELOG.md`,
-and `README.md`, then writes a daily draft pack to:
+`README.md`, and `content/twitter/profile-context.md`, then writes a daily
+draft pack to:
 
 ```bash
 content/twitter/drafts/YYYY-MM-DD.md
@@ -27,6 +28,10 @@ personal founder voice, or content that should be reviewed before posting.
 5. Post manually.
 
 The agent does not call the X API, schedule posts, or publish anything.
+
+`profile-context.md` contains public profile-level calibration for
+`@agentpilled`. Update it when a new pinned post, strong post, or export gives a
+better signal for voice and audience.
 
 ## Useful options
 

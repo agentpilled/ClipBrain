@@ -3,6 +3,18 @@
 ## Short Posts
 
 ```text
+the thing i want from ClipBrain is simple:
+
+i read something once.
+my agents can use it later.
+
+kindle highlights, clips, pdfs, saved posts, videos.
+
+not as a folder.
+as working memory.
+```
+
+```text
 Agents got tools before they got memory.
 
 They can edit files, call APIs, and run commands.

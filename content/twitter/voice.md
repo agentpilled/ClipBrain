@@ -10,6 +10,7 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - Honest about rough edges
 - Warmly obsessive about product quality
 - Local-first and privacy-aware without sounding paranoid
+- Agent-native and a little recursive, in continuity with `@agentpilled`
 
 ## Use
 
@@ -20,6 +21,8 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - A little taste and conviction when the point deserves it
 - Product proof before big claims
 - Public constraints: what is local, what is optional, what is still rough
+- Founder-origin framing: personal itch -> external spark -> build proof
+- The concrete memory sources from the pinned post: Kindle highlights, saved posts, blogs, YouTube, PDFs, notes
 
 ## Avoid
 
@@ -31,9 +34,11 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - Secrets, tokens, private emails, private highlights, or personal corpus dumps
 - Claims that ClipBrain publishes to X or works as a hosted cloud service
 - Posts that could apply to any AI product if you replaced the name
+- Corporate launch voice that clashes with the `creating creates creativity` profile
 
 ## Reusable Lines
 
+- I do not want a larger archive. I want working memory.
 - Your AI should not start from zero every time.
 - Most notes apps are for humans to browse later. ClipBrain is memory agents can use now.
 - The next bottleneck for agents is not tools. It is context they can trust.
@@ -50,3 +55,4 @@ Before posting, ask:
 2. Can I attach a screenshot, screen recording, diff, or command output?
 3. Does the post reveal anything from private captures?
 4. Would this still be interesting if nobody knew ClipBrain existed?
+5. Does this sound like `@agentpilled`, or did it drift into generic product marketing?
