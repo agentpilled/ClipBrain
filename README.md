@@ -194,6 +194,19 @@ For a fast health check during development:
 bun run doctor
 ```
 
+## Building in public
+
+ClipBrain includes a draft-only Twitter/X agent for building in public from
+real repo progress:
+
+```bash
+bun run twitter:draft
+```
+
+It reads public signals such as recent commits, `CHANGELOG.md`, and `README.md`,
+then writes a reviewable draft pack to `content/twitter/drafts/`. Draft files
+are gitignored and nothing is posted automatically.
+
 ## Credits
 
 - **[GBrain](https://github.com/nichochar/gbrain)** by [@garrytan](https://twitter.com/garrytan) — the knowledge engine powering ClipBrain (pgvector, hybrid search, MCP)

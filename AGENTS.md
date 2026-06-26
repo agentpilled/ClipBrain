@@ -20,6 +20,7 @@ Important files:
 - `cleanup-apply.ts`: explicit approval-gated cleanup executor with backups/logs
 - `gbrain-list.ts`: shared robust `gbrain list` scanner used by server, corpus, and cleanup flows
 - `doctor.ts`: first-run diagnostics for launch readiness and local setup issues
+- `twitter-agent.ts`: draft-only building-in-public generator; never posts to X
 - `service-worker.js`: MV3 background worker, capture dispatch, offline queue
 - `content-script.js`, `kindle-content-script.js`, `gmail-content-script.js`: page extractors
 - `post-process.ts`: optional OpenAI enrichment after a capture is saved
