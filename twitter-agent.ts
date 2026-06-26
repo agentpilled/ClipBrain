@@ -47,6 +47,7 @@ export type TwitterDraftPack = {
   demoIdea: DemoIdea;
   replies: TweetDraft[];
   warnings: string[];
+  editorChecklist: string[];
 };
 
 type CommandResult = {
@@ -126,6 +127,7 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
 
 export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
   const primary = primaryBuildSignal(signals);
+  const latestRelease = latestReleasePost(signals);
   const topicLine = signals.topic
     ? `Current focus: ${signals.topic}.`
     : `Current repo signal: ${primary}.`;
@@ -135,11 +137,13 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
       label: 'Agent memory thesis',
       why: 'Lead with the category, not the feature list.',
       text: [
-        'Your AI can call tools and write code.',
+        'Agents got tools before they got memory.',
         '',
-        'But it still starts cold if it cannot see what you read.',
+        'They can edit files, call APIs, and run commands.',
         '',
-        'I am building ClipBrain so Claude Code, Codex, and other MCP agents can search your saved web clips, Kindle highlights, PDFs, Gmail threads, and YouTube transcripts.',
+        'But they still start cold if they cannot see what shaped your thinking.',
+        '',
+        'That is the weird gap I am trying to close with ClipBrain.',
       ].join('\n'),
     },
     {
@@ -148,29 +152,36 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
       text: [
         "Today's ClipBrain build log:",
         '',
-        `I am working on ${primary}.`,
+        `Working on ${primary}.`,
         '',
-        'Small detail, big difference: a local AI memory layer should feel alive before you trust it with your reading.',
+        'The product is not done when capture works.',
+        '',
+        'It is done when the first useful agent answer feels obvious.',
       ].join('\n'),
     },
     {
       label: 'Product detail',
       why: 'Shows the product bar through an implementation detail.',
       text: [
-        'Most notes apps are designed for humans to browse later.',
+        'A bookmark is inert.',
         '',
-        'ClipBrain is memory agents can use now:',
-        '- retrieve the right source',
-        '- return citations',
-        '- surface related saved notes',
-        '- stay local-first',
+        'A ClipBrain capture should become working context:',
+        '',
+        '- retrieve the source',
+        '- pull the highlights',
+        '- cite the answer',
+        '- surface related reading',
+        '- stay local',
+        '',
+        'That is the bar.',
       ].join('\n'),
     },
+    latestRelease,
     {
       label: 'Taste',
       why: 'Positions ClipBrain against the default note-taking graveyard.',
       text: [
-        'The product taste I want for ClipBrain:',
+        'The taste target for ClipBrain:',
         '',
         'Not a notes app.',
         'Not a bookmark graveyard.',
@@ -195,7 +206,7 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
   const thread: ThreadDraft = {
     label: 'Why ClipBrain exists',
     posts: [
-      'Agents are getting better at doing work.\n\nBut most of them still start every task without the context that shaped your thinking.',
+      'Agents are getting better at doing work.\n\nBut most of them still start every task with a blank memory.',
       'That context is scattered everywhere:\n\nKindle highlights, articles, PDFs, YouTube transcripts, Gmail threads, old notes, half-remembered links.',
       'ClipBrain turns those saved things into local, searchable, cited memory for MCP agents.\n\nNot a hosted cloud brain. Not a manual prompt dump. A local memory layer.',
       `The current build focus: ${primary}.\n\nI want every improvement to make the first useful agent handoff faster, clearer, or more trustworthy.`,
@@ -240,6 +251,13 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
     demoIdea,
     replies,
     warnings: buildWarnings(shortPosts, thread, replies),
+    editorChecklist: [
+      'Pick one post and make it more specific before posting.',
+      'Attach a screenshot or short screen recording if the post claims product magic.',
+      'Remove private captures, email content, exact corpus counts, and provider/API details.',
+      'If a post is over 280 characters, either trim it or intentionally post it as a long-form X post.',
+      'Spend 20 minutes replying to agent-memory, MCP, local-first AI, and second-brain conversations after posting.',
+    ],
   };
 }
 
@@ -249,6 +267,8 @@ export function formatDraftPackMarkdown(pack: TwitterDraftPack): string {
     '',
     'Draft-only. Review manually before posting.',
     '',
+    `Best first post: ${pack.shortPosts[0].label} (${characterCount(pack.shortPosts[0].text)} chars).`,
+    '',
     '## Source Signals',
     ...pack.sourceSignals.map(signal => `- ${signal}`),
     '',
@@ -257,12 +277,12 @@ export function formatDraftPackMarkdown(pack: TwitterDraftPack): string {
   ];
 
   pack.shortPosts.forEach((draft, index) => {
-    lines.push(`### ${index + 1}. ${draft.label}`, '', draft.text, '', `Why: ${draft.why}`, '');
+    lines.push(formatDraftTitle(index + 1, draft), '', draft.text, '', `Why: ${draft.why}`, '');
   });
 
   lines.push('## Thread', '', `### ${pack.thread.label}`, '');
   pack.thread.posts.forEach((post, index) => {
-    lines.push(`**${index + 1}.**`, '', post, '');
+    lines.push(`**${index + 1}. (${characterCount(post)} chars)**`, '', post, '');
   });
 
   lines.push(
@@ -279,9 +299,10 @@ export function formatDraftPackMarkdown(pack: TwitterDraftPack): string {
   );
 
   pack.replies.forEach((draft, index) => {
-    lines.push(`### ${index + 1}. ${draft.label}`, '', draft.text, '', `Why: ${draft.why}`, '');
+    lines.push(formatDraftTitle(index + 1, draft), '', draft.text, '', `Why: ${draft.why}`, '');
   });
 
+  lines.push('## Editor Checklist', '', ...pack.editorChecklist.map(item => `- ${item}`), '');
   lines.push('## Warnings', '', ...pack.warnings.map(warning => `- ${warning}`), '');
 
   return lines.join('\n');
@@ -385,6 +406,44 @@ function humanizeCommit(message: string): string {
     .trim();
 }
 
+function latestReleasePost(signals: RepoSignals): TweetDraft {
+  const latestNote = signals.latestChangelog?.notes[0] || '';
+  const hasYouAlsoSaved = /you also saved/i.test(latestNote);
+
+  if (hasYouAlsoSaved) {
+    return {
+      label: 'Latest release',
+      why: 'Turns the latest changelog into a concrete product story.',
+      text: [
+        'I added a small ClipBrain feature I care a lot about: "You Also Saved."',
+        '',
+        'When your agent asks about a topic, it should not only return literal matches.',
+        '',
+        'It should surface the connected reading you forgot you saved.',
+        '',
+        'That is the difference between search and memory.',
+      ].join('\n'),
+    };
+  }
+
+  const release = signals.latestChangelog
+    ? `v${signals.latestChangelog.version}`
+    : 'the latest build';
+  const note = latestNote ? truncateForSentence(latestNote) : 'making saved context more useful for agents';
+
+  return {
+    label: 'Latest release',
+    why: 'Turns the latest changelog into a concrete product story.',
+    text: [
+      `Latest ClipBrain release: ${release}.`,
+      '',
+      note,
+      '',
+      'The pattern I keep coming back to: less manual context assembly, more source-grounded agent memory.',
+    ].join('\n'),
+  };
+}
+
 function buildWarnings(shortPosts: TweetDraft[], thread: ThreadDraft, replies: TweetDraft[]): string[] {
   const allText = [
     ...shortPosts.map(post => post.text),
@@ -408,6 +467,14 @@ function buildWarnings(shortPosts: TweetDraft[], thread: ThreadDraft, replies: T
   }
 
   return warnings;
+}
+
+function formatDraftTitle(index: number, draft: TweetDraft): string {
+  return `### ${index}. ${draft.label} (${characterCount(draft.text)} chars)`;
+}
+
+export function characterCount(text: string): number {
+  return text.length;
 }
 
 function truncateForSignal(text: string): string {

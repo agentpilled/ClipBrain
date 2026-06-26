@@ -18,6 +18,8 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - Plain sentences
 - Concrete nouns: clips, highlights, PDFs, context packs, citations, MCP
 - A little taste and conviction when the point deserves it
+- Product proof before big claims
+- Public constraints: what is local, what is optional, what is still rough
 
 ## Avoid
 
@@ -28,6 +30,7 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - Hashtag piles
 - Secrets, tokens, private emails, private highlights, or personal corpus dumps
 - Claims that ClipBrain publishes to X or works as a hosted cloud service
+- Posts that could apply to any AI product if you replaced the name
 
 ## Reusable Lines
 
@@ -36,3 +39,14 @@ ClipBrain should sound like a founder building the tool he needed for himself.
 - The next bottleneck for agents is not tools. It is context they can trust.
 - Local-first should still feel magical.
 - A bookmark is inert. A clip should become usable context.
+- The product is not done when capture works. It is done when the first useful agent answer feels obvious.
+- That is the difference between search and memory.
+
+## Editing Heuristic
+
+Before posting, ask:
+
+1. What real build artifact does this point to?
+2. Can I attach a screenshot, screen recording, diff, or command output?
+3. Does the post reveal anything from private captures?
+4. Would this still be interesting if nobody knew ClipBrain existed?

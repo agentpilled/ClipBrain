@@ -3,13 +3,13 @@
 ## Short Posts
 
 ```text
-Your AI has tools.
+Agents got tools before they got memory.
 
-It can write code, search files, and call APIs.
+They can edit files, call APIs, and run commands.
 
-But it still has no idea what you read yesterday.
+But they still start cold if they cannot see what shaped your thinking.
 
-I am building ClipBrain so Claude Code, Codex, and other MCP agents can use your saved reading as local, cited memory.
+That is the weird gap I am trying to close with ClipBrain.
 ```
 
 ```text
@@ -23,11 +23,23 @@ I want ClipBrain to be memory agents can use now:
 ```
 
 ```text
-Tiny product bar for ClipBrain:
+Today's ClipBrain build log:
 
-A stranger should clone the repo, run setup, clip one page, ask their AI a question, and feel the click.
+Working on first-run magic from clone to first useful agent answer.
 
-Anything before that moment is just plumbing.
+The product is not done when capture works.
+
+It is done when the first useful agent answer feels obvious.
+```
+
+```text
+I added a small ClipBrain feature I care a lot about: "You Also Saved."
+
+When your agent asks about a topic, it should not only return literal matches.
+
+It should surface the connected reading you forgot you saved.
+
+That is the difference between search and memory.
 ```
 
 ## Thread Shape

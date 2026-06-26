@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  characterCount,
   extractLatestChangelog,
   extractReadmeValueProp,
   formatDraftPackMarkdown,
@@ -50,10 +51,12 @@ describe('twitter agent helpers', () => {
   test('generates a complete draft pack from repo signals', () => {
     const pack = generateDraftPack(signals());
 
-    expect(pack.shortPosts).toHaveLength(5);
+    expect(pack.shortPosts).toHaveLength(6);
+    expect(pack.shortPosts.some(post => post.label === 'Latest release')).toBe(true);
     expect(pack.thread.posts).toHaveLength(5);
     expect(pack.demoIdea.steps.length).toBeGreaterThanOrEqual(4);
     expect(pack.replies).toHaveLength(3);
+    expect(pack.editorChecklist.join('\n')).toContain('screenshot');
     expect(pack.warnings.join('\n')).toContain('Draft-only');
     expect(pack.sourceSignals.join('\n')).toContain('Commit abc1234');
   });
@@ -62,10 +65,17 @@ describe('twitter agent helpers', () => {
     const text = formatDraftPackMarkdown(generateDraftPack(signals()));
 
     expect(text).toContain('# ClipBrain Twitter Drafts - 2026-06-26');
+    expect(text).toContain('Best first post:');
+    expect(text).toContain('chars)');
     expect(text).toContain('## Short Posts');
     expect(text).toContain('## Thread');
     expect(text).toContain('## Demo Idea');
+    expect(text).toContain('## Editor Checklist');
     expect(text).toContain('## Warnings');
+  });
+
+  test('counts draft characters for review', () => {
+    expect(characterCount('abc\n123')).toBe(7);
   });
 
   test('parses CLI args safely', () => {
@@ -106,7 +116,7 @@ function signals(): RepoSignals {
     latestChangelog: {
       version: '0.2.5',
       date: '2026-06-15',
-      notes: ['Your AI now sees the bigger picture across a whole answer.'],
+      notes: ['The context pack adds a "You Also Saved" section for connected reading.'],
     },
     recentCommits: [
       { hash: 'abc1234', message: 'Add Twitter draft agent' },
