@@ -2,6 +2,9 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKIP_LAUNCHD="${CLIPBRAIN_SKIP_LAUNCHD:-0}"
+SKIP_OPEN="${CLIPBRAIN_SKIP_OPEN:-0}"
+SERVER_AUTOSTART=false
 
 echo "🧠 Setting up ClipBrain..."
 echo ""
@@ -331,7 +334,7 @@ with open('$SCRIPT_DIR/.clipbrain.json', 'w') as f:
 fi
 
 # ─── Step 6: Install auto-start (macOS) ──────────────────────────────────────
-if [ "$(uname)" = "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ] && [ "$SKIP_LAUNCHD" != "1" ]; then
   echo ""
   echo "→ Installing background service..."
 
@@ -389,6 +392,7 @@ PLISTEOF
   for i in $(seq 1 15); do
     if curl -s --max-time 2 http://127.0.0.1:19285/health > /dev/null 2>&1; then
       echo "  ✓ Server running"
+      SERVER_AUTOSTART=true
       break
     fi
     if [ $i -eq 15 ]; then
@@ -396,6 +400,9 @@ PLISTEOF
     fi
     sleep 1
   done
+elif [ "$(uname)" = "Darwin" ]; then
+  echo ""
+  echo "→ Skipping background service (CLIPBRAIN_SKIP_LAUNCHD=1)"
 fi
 
 # ─── Done ────────────────────────────────────────────────────────────────────
@@ -405,8 +412,10 @@ echo ""
 echo "  ✓ Dependencies installed"
 echo "  ✓ gbrain CLI ready"
 echo "  ✓ Database initialized"
-if [ "$(uname)" = "Darwin" ]; then
+if [ "$SERVER_AUTOSTART" = true ]; then
   echo "  ✓ Server running (auto-starts on login)"
+elif [ "$(uname)" = "Darwin" ] && [ "$SKIP_LAUNCHD" = "1" ]; then
+  echo "  ○ Server auto-start skipped (run: bun run serve)"
 fi
 if echo "$CONFIGURED" | grep -q "claude"; then
   echo "  ✓ Claude Code connected"
@@ -450,11 +459,14 @@ echo "    • Cmd+Shift+S on YouTube videos for transcripts"
 echo "    • http://127.0.0.1:19285 to browse your brain"
 
 # Open Chrome extensions page for easy loading
-if [ "$(uname)" = "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ] && [ "$SKIP_OPEN" != "1" ]; then
   echo ""
   echo "Opening Chrome extensions page..."
   open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
 
   # Also reveal the folder in Finder for drag & drop
   open -R "$SCRIPT_DIR" 2>/dev/null || true
+elif [ "$(uname)" = "Darwin" ]; then
+  echo ""
+  echo "Skipping Chrome/Finder open (CLIPBRAIN_SKIP_OPEN=1)"
 fi

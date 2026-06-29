@@ -194,6 +194,12 @@ For a fast health check during development:
 bun run doctor
 ```
 
+For non-GUI setup smoke tests, use:
+
+```bash
+CLIPBRAIN_SKIP_LAUNCHD=1 CLIPBRAIN_SKIP_OPEN=1 ./setup.sh
+```
+
 ## Building in public
 
 ClipBrain includes a draft-only Twitter/X agent for building in public from
