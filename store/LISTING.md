@@ -209,7 +209,7 @@ https://github.com/agentpilled/ClipBrain/blob/main/PRIVACY.md
 
 1. https://chrome.google.com/webstore/devconsole → sign in → pay the one-time $5
    if you haven't.
-2. **New Item** → upload `store/dist/clipbrain-extension-v0.2.4.zip`.
+2. **New Item** → upload `store/dist/clipbrain-extension-v0.2.5.zip`.
 3. **Store listing** tab → paste name, summary, description, category, language;
    confirm the icon; upload the 3 screenshots from `store/screenshots/`.
 4. **Privacy practices** tab → paste the single purpose, each permission
