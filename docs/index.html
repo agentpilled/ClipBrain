@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClipBrain - Local memory for AI agents</title>
+  <meta name="description" content="Clip web pages, X posts, Kindle highlights, YouTube transcripts, Gmail threads, and PDFs into local, agent-ready memory your AI tools can search over MCP.">
+  <meta property="og:title" content="ClipBrain">
+  <meta property="og:description" content="Clip anything into local, agent-ready memory.">
+  <meta property="og:image" content="https://agentpilled.github.io/ClipBrain/assets/dashboard.png">
+  <meta name="theme-color" content="#111014">
+  <link rel="icon" href="assets/icon-128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Instrument+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111014;
+      --bg-2: #18171b;
+      --panel: #202026;
+      --panel-2: #292833;
+      --line: #34323d;
+      --line-strong: #4c465f;
+      --text: #f3f0e8;
+      --muted: #b7b0a5;
+      --quiet: #7f796f;
+      --violet: #8b5cf6;
+      --violet-soft: #c4b5fd;
+      --green: #34d399;
+      --amber: #e5a84b;
+      --blue: #60a5fa;
+      --red: #f87171;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
+      --sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(139, 92, 246, 0.08), transparent 420px),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      letter-spacing: 0;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    code,
+    pre,
+    .mono {
+      font-family: var(--mono);
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .site-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(243, 240, 232, 0.08);
+      background: color-mix(in oklch, var(--bg) 82%, transparent);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      gap: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(243, 240, 232, 0.05);
+    }
+
+    .hero {
+      position: relative;
+      min-height: 620px;
+      height: 84svh;
+      max-height: 760px;
+      overflow: hidden;
+      border-bottom: 1px solid rgba(243, 240, 232, 0.08);
+      isolation: isolate;
+    }
+
+    .hero-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 64% 38%;
+      z-index: -3;
+    }
+
+    .hero-shade {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(90deg, rgba(17, 16, 20, 0.98) 0%, rgba(17, 16, 20, 0.82) 42%, rgba(17, 16, 20, 0.26) 76%, rgba(17, 16, 20, 0.64) 100%),
+        linear-gradient(0deg, rgba(17, 16, 20, 0.86) 0%, transparent 35%, rgba(17, 16, 20, 0.3) 100%);
+    }
+
+    .hero-grid {
+      display: grid;
+      align-items: center;
+      min-height: inherit;
+      height: 100%;
+      padding-top: 64px;
+    }
+
+    .hero-content {
+      width: min(640px, 100%);
+      min-width: 0;
+      padding: 46px 0 38px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .kicker img {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 78px;
+      line-height: 0.94;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .hero-lede {
+      margin-top: 18px;
+      font-size: 30px;
+      line-height: 1.15;
+      font-weight: 700;
+      color: #fff9ef;
+    }
+
+    .hero-copy {
+      width: min(560px, 100%);
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.62;
+      overflow-wrap: break-word;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      border: 1px solid transparent;
+    }
+
+    .button.primary {
+      background: var(--text);
+      color: #141218;
+    }
+
+    .button.secondary {
+      border-color: var(--line-strong);
+      color: var(--text);
+      background: rgba(32, 32, 38, 0.74);
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 28px 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .facts li {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border: 1px solid rgba(243, 240, 232, 0.13);
+      border-radius: 8px;
+      background: rgba(17, 16, 20, 0.66);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    section {
+      padding: 88px 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(280px, 0.68fr);
+      gap: 52px;
+      align-items: end;
+      margin-bottom: 34px;
+    }
+
+    .section-head > *,
+    .split > *,
+    .install-grid > *,
+    .privacy > *,
+    .flow > *,
+    .source-grid > *,
+    .footer-inner > * {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      margin-bottom: 12px;
+      color: var(--violet-soft);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      max-width: 760px;
+      font-size: 44px;
+      line-height: 1.08;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .section-copy {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.65;
+      overflow-wrap: break-word;
+    }
+
+    .screen {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .screen img {
+      width: 100%;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+      gap: 46px;
+      align-items: center;
+    }
+
+    .split.reverse {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    }
+
+    .feature-text h3 {
+      font-size: 30px;
+      line-height: 1.14;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .feature-text p {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.7;
+      overflow-wrap: break-word;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 10px;
+      margin: 24px 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+    }
+
+    .mini-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .mini-list .dot {
+      margin-top: 9px;
+      flex: 0 0 auto;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .source {
+      min-height: 138px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .source-mark {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-bottom: 18px;
+    }
+
+    .source h3 {
+      margin-bottom: 7px;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    .source p {
+      color: var(--quiet);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .flow-step {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--panel), rgba(32, 32, 38, 0.62));
+    }
+
+    .step-number {
+      margin-bottom: 34px;
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .flow-step h3 {
+      margin-bottom: 10px;
+      font-size: 21px;
+    }
+
+    .flow-step p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.62;
+    }
+
+    .install-band {
+      background: var(--bg-2);
+      border-top: 1px solid rgba(243, 240, 232, 0.08);
+      border-bottom: 1px solid rgba(243, 240, 232, 0.08);
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1fr);
+      gap: 42px;
+      align-items: start;
+    }
+
+    .terminal {
+      margin: 0;
+      overflow: auto;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0e0d12;
+      color: #ddd6c9;
+      font-size: 14px;
+      line-height: 1.9;
+      box-shadow: var(--shadow);
+      max-width: 100%;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .terminal .prompt {
+      color: var(--green);
+    }
+
+    .setup-notes {
+      display: grid;
+      gap: 12px;
+    }
+
+    .setup-note {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .setup-note h3 {
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    .setup-note p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.58;
+      overflow-wrap: break-word;
+    }
+
+    .privacy {
+      display: grid;
+      grid-template-columns: minmax(0, 0.88fr) minmax(280px, 0.72fr);
+      gap: 42px;
+      align-items: center;
+    }
+
+    .privacy-lines {
+      display: grid;
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--line);
+    }
+
+    .privacy-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px 18px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .privacy-line span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .privacy-line strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .final-cta {
+      text-align: center;
+    }
+
+    .final-cta h2 {
+      margin: 0 auto;
+    }
+
+    .final-cta p {
+      width: min(680px, 100%);
+      margin: 18px auto 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    footer {
+      padding: 34px 0 44px;
+      border-top: 1px solid rgba(243, 240, 232, 0.08);
+      color: var(--quiet);
+      font-size: 14px;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 18px;
+    }
+
+    footer a:hover {
+      color: var(--text);
+    }
+
+    @media (max-width: 960px) {
+      h1 {
+        font-size: 58px;
+      }
+
+      h2 {
+        font-size: 36px;
+      }
+
+      .section-head,
+      .split,
+      .split.reverse,
+      .install-grid,
+      .privacy {
+        grid-template-columns: 1fr;
+      }
+
+      .source-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        width: min(100% - 28px, 1120px);
+      }
+
+      .nav-inner {
+        height: 58px;
+      }
+
+      .nav-links a:not(.nav-action) {
+        display: none;
+      }
+
+      .hero {
+        height: auto;
+        min-height: 0;
+      }
+
+      .hero-grid {
+        min-height: 560px;
+        padding-top: 58px;
+      }
+
+      .hero-image {
+        object-position: 70% 50%;
+      }
+
+      .hero-shade {
+        background:
+          linear-gradient(90deg, rgba(17, 16, 20, 0.98) 0%, rgba(17, 16, 20, 0.82) 66%, rgba(17, 16, 20, 0.5) 100%),
+          linear-gradient(0deg, rgba(17, 16, 20, 0.9) 0%, transparent 52%);
+      }
+
+      .hero-content {
+        padding: 42px 0 34px;
+      }
+
+      h1 {
+        font-size: 46px;
+      }
+
+      .hero-lede {
+        font-size: 24px;
+      }
+
+      .hero-copy,
+      .section-copy,
+      .final-cta p {
+        font-size: 16px;
+      }
+
+      section {
+        padding: 64px 0;
+      }
+
+      .source-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .footer-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="ClipBrain home">
+        <img src="assets/icon-128.png" alt="">
+        <span>ClipBrain</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#capture">Capture</a>
+        <a href="#install">Install</a>
+        <a href="#privacy">Privacy</a>
+        <a class="nav-action" href="https://github.com/agentpilled/ClipBrain">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-label="ClipBrain">
+      <img class="hero-image" src="assets/dashboard.png" alt="ClipBrain dashboard showing saved captures, tags, summaries, and source types">
+      <div class="hero-shade" aria-hidden="true"></div>
+      <div class="wrap hero-grid">
+        <div class="hero-content">
+          <div class="kicker">
+            <img src="assets/icon-128.png" alt="">
+            <span>Local-first memory for AI agents</span>
+          </div>
+          <h1>ClipBrain</h1>
+          <p class="hero-lede">Clip anything into agent-ready local memory.</p>
+          <p class="hero-copy">Web pages, X posts, Kindle highlights, YouTube transcripts, Gmail threads, and PDFs become searchable context for Codex, Claude Code, Claude Desktop, Cursor, and any MCP client.</p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/agentpilled/ClipBrain">Get the code</a>
+            <a class="button secondary" href="#install">Install steps</a>
+          </div>
+          <ul class="facts" aria-label="Product facts">
+            <li><span class="dot" aria-hidden="true"></span>No ClipBrain cloud</li>
+            <li><span class="dot" aria-hidden="true"></span>MCP-ready</li>
+            <li><span class="dot" aria-hidden="true"></span>Runs on 127.0.0.1</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="capture">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Capture layer</p>
+            <h2>Your reading life becomes queryable infrastructure.</h2>
+          </div>
+          <p class="section-copy">ClipBrain is two parts: a Chrome extension for capture and a local server that stores, compiles, and exposes your knowledge over MCP. The extension is the door; the local memory layer is the product.</p>
+        </div>
+
+        <div class="split">
+          <div class="feature-text">
+            <h3>One shortcut, every source.</h3>
+            <p>Press Cmd+Shift+S or use the toolbar button. ClipBrain extracts the page, sends it to your local server, enriches it if you configured AI processing, and keeps the raw source searchable.</p>
+            <ul class="mini-list">
+              <li><span class="dot" aria-hidden="true"></span><span>Articles are cleaned with Readability.</span></li>
+              <li><span class="dot" aria-hidden="true"></span><span>Kindle imports walk every book and save highlights plus notes.</span></li>
+              <li><span class="dot" aria-hidden="true"></span><span>Context packs return cited sources your agent can use immediately.</span></li>
+            </ul>
+          </div>
+          <div class="screen">
+            <img src="assets/capture.png" alt="Chrome extension popup capturing an X post into ClipBrain" loading="lazy">
+          </div>
+        </div>
+
+        <div class="source-grid" aria-label="Capture sources">
+          <article class="source">
+            <span class="source-mark" style="background: var(--green);"></span>
+            <h3>Web</h3>
+            <p>Clean article text, title, URL, tags, summaries, and source chunks.</p>
+          </article>
+          <article class="source">
+            <span class="source-mark" style="background: var(--amber);"></span>
+            <h3>Kindle</h3>
+            <p>Highlights, notes, book metadata, and chapter-level reading evidence.</p>
+          </article>
+          <article class="source">
+            <span class="source-mark" style="background: var(--red);"></span>
+            <h3>YouTube</h3>
+            <p>Transcripts with timestamps, ready for search and summarization.</p>
+          </article>
+          <article class="source">
+            <span class="source-mark" style="background: var(--blue);"></span>
+            <h3>PDFs</h3>
+            <p>Drag, drop, extract, index, and ask your agent about the file later.</p>
+          </article>
+          <article class="source">
+            <span class="source-mark" style="background: var(--violet);"></span>
+            <h3>Gmail</h3>
+            <p>Optional permission for threads you explicitly choose to capture.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap split reverse">
+        <div class="screen">
+          <img src="assets/kindle.png" alt="Kindle notebook page with imported highlights and the ClipBrain import control" loading="lazy">
+        </div>
+        <div class="feature-text">
+          <p class="eyebrow">Kindle highlights</p>
+          <h3>Your books stop living in a separate silo.</h3>
+          <p>Open your Kindle notebook, click Import to ClipBrain, and the extension walks the library for you. Highlights become searchable memory with book titles, notes, and citation-ready source text.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Agent workflow</p>
+            <h2>The magic is not storage. It is context on demand.</h2>
+          </div>
+          <p class="section-copy">ClipBrain uses GBrain under the hood for local knowledge storage and retrieval, then adds capture workflows and a ClipBrain-specific context pack for compact, cited agent handoffs.</p>
+        </div>
+        <div class="flow">
+          <article class="flow-step">
+            <div class="step-number">01</div>
+            <h3>Capture</h3>
+            <p>Save the active page, thread, transcript, PDF, or Kindle highlight set into your local ClipBrain server.</p>
+          </article>
+          <article class="flow-step">
+            <div class="step-number">02</div>
+            <h3>Compile</h3>
+            <p>ClipBrain preserves raw text, creates summaries and tags when configured, and keeps long sources searchable in chunks.</p>
+          </article>
+          <article class="flow-step">
+            <div class="step-number">03</div>
+            <h3>Ask</h3>
+            <p>Your MCP client can query your corpus and receive cited context packs with sources, snippets, claims, quotes, and actions.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="install-band">
+      <div class="wrap install-grid">
+        <div>
+          <p class="eyebrow">Install</p>
+          <h2>Open source, local server required.</h2>
+          <p class="section-copy">The Chrome extension is the capture half. It needs the ClipBrain local server running on your machine at 127.0.0.1:19285.</p>
+        </div>
+        <div class="setup-notes">
+          <pre class="terminal"><code><span class="prompt">git clone</span> https://github.com/agentpilled/ClipBrain
+<span class="prompt">cd</span> ClipBrain
+<span class="prompt">./setup.sh</span>
+<span class="prompt">bun run</span> doctor</code></pre>
+          <article class="setup-note">
+            <h3>Extension</h3>
+            <p>Install from the Chrome Web Store once the listing is live, or load the repo folder unpacked from chrome://extensions while the listing is under review.</p>
+          </article>
+          <article class="setup-note">
+            <h3>MCP clients</h3>
+            <p>Setup configures the local memory tools for compatible AI clients, including the ClipBrain context_pack handoff.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy">
+      <div class="wrap privacy">
+        <div>
+          <p class="eyebrow">Privacy boundary</p>
+          <h2>No hosted ClipBrain backend.</h2>
+          <p class="section-copy">Your captures go from Chrome to your local server. If you configure optional AI enrichment with your own OpenAI key, your local server may send captured text to OpenAI for summaries and tags. ClipBrain itself does not run a cloud corpus.</p>
+        </div>
+        <div class="privacy-lines" aria-label="Privacy details">
+          <div class="privacy-line"><strong>Storage</strong><span>Your machine</span></div>
+          <div class="privacy-line"><strong>Extension endpoint</strong><span>127.0.0.1</span></div>
+          <div class="privacy-line"><strong>Cloud account</strong><span>Not required</span></div>
+          <div class="privacy-line"><strong>AI enrichment</strong><span>Optional, user-configured</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="wrap">
+        <h2>Give your agents the context you already earned by reading.</h2>
+        <p>ClipBrain turns the internet, your books, and your documents into local memory your AI can actually cite.</p>
+        <div class="actions" style="justify-content: center;">
+          <a class="button primary" href="https://github.com/agentpilled/ClipBrain">Start with GitHub</a>
+          <a class="button secondary" href="https://github.com/agentpilled/ClipBrain/blob/main/PRIVACY.md">Read privacy policy</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <p>Built on <a href="https://github.com/nichochar/gbrain">GBrain</a>. Open source under MIT.</p>
+      <div class="footer-links">
+        <a href="https://github.com/agentpilled/ClipBrain">GitHub</a>
+        <a href="https://github.com/agentpilled/ClipBrain/issues">Support</a>
+        <a href="https://x.com/agentpilled">X</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -4,6 +4,8 @@
 
 ClipBrain is an open source, local-first memory layer for AI agents. Clip web pages, Kindle highlights, Gmail threads, YouTube transcripts, and PDFs into a searchable knowledge base that your AI tools can use through MCP.
 
+[Website](https://agentpilled.github.io/ClipBrain/) · [Chrome Web Store submission kit](store/LISTING.md) · [Privacy](PRIVACY.md)
+
 Built on top of [@garrytan](https://twitter.com/garrytan)'s [GBrain](https://github.com/nichochar/gbrain) knowledge engine. Inspired by [@karpathy](https://twitter.com/karpathy)'s [post about building personal knowledge bases with LLMs](https://x.com/karpathy/status/20398050659526644595).
 
 One shortcut: **Cmd+Shift+S**. Your AI never starts from zero again.

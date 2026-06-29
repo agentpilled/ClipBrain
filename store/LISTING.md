@@ -57,6 +57,16 @@ Productivity
 English (United States)
 ```
 
+**Homepage URL**
+```
+https://agentpilled.github.io/ClipBrain/
+```
+
+**Support URL**
+```
+https://github.com/agentpilled/ClipBrain/issues
+```
+
 **Detailed description**
 ```
 ClipBrain is the memory layer between your reading life and your AI.
@@ -211,7 +221,9 @@ https://github.com/agentpilled/ClipBrain/blob/main/PRIVACY.md
    if you haven't.
 2. **New Item** → upload `store/dist/clipbrain-extension-v0.2.5.zip`.
 3. **Store listing** tab → paste name, summary, description, category, language;
-   confirm the icon; upload the 3 screenshots from `store/screenshots/`.
+   confirm the icon; upload the 3 screenshots from `store/screenshots/`;
+   set Homepage URL to `https://agentpilled.github.io/ClipBrain/` and Support
+   URL to `https://github.com/agentpilled/ClipBrain/issues`.
 4. **Privacy practices** tab → paste the single purpose, each permission
    justification, set remote code = No, fill data usage + the 3 certifications,
    paste the privacy policy URL.
