@@ -7,6 +7,9 @@ progress. `bun run twitter:draft` reads public project signals and writes a
 local, gitignored daily draft pack with short posts, a thread, a demo idea,
 suggested replies, and review warnings.
 
+Pinned the transitive `hono` dependency used by the MCP SDK to `4.12.27` via a
+package override, clearing `bun audit` so `bun run launch:check` passes again.
+
 ## [0.2.5] - 2026-06-15
 
 Your AI now sees the bigger picture across a whole answer. The context pack adds a **"You Also Saved"** section: related notes already in your brain that your question didn't directly surface — aggregated across every source in the answer, ranked by how many of them connect to it, with anything already shown filtered out. Ask about a topic and your AI can point you to the connected reading you forgot you saved, not just the literal matches. Builds on v0.2.3's per-source connections, lifting them to the level of the whole pack.
