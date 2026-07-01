@@ -7,6 +7,7 @@ import {
   generateDraftPack,
   parseArgs,
   parseGitLog,
+  parseReplyTargets,
   parseVoiceSamples,
   runTwitterAgent,
 } from '../twitter-agent.ts';
@@ -94,6 +95,26 @@ describe('twitter agent helpers', () => {
     expect(samples?.traits).toContain('allows enthusiastic punctuation when earned');
   });
 
+  test('parses local reply targets with optional URLs and angles', () => {
+    expect(parseReplyTargets([
+      '# Reply targets',
+      '',
+      '- https://x.com/someone/status/123 | Bridge MCP tools to memory.',
+      '- Thread about local-first AI | Emphasize trust without sounding paranoid.',
+    ].join('\n'))).toEqual([
+      {
+        url: 'https://x.com/someone/status/123',
+        context: 'Bridge MCP tools to memory.',
+        angle: undefined,
+      },
+      {
+        url: undefined,
+        context: 'Thread about local-first AI',
+        angle: 'Emphasize trust without sounding paranoid.',
+      },
+    ]);
+  });
+
   test('generates a complete draft pack from repo signals', () => {
     const pack = generateDraftPack(signals());
 
@@ -101,7 +122,9 @@ describe('twitter agent helpers', () => {
     expect(pack.shortPosts.some(post => post.label === 'Latest release')).toBe(true);
     expect(pack.thread.posts).toHaveLength(5);
     expect(pack.demoIdea.steps.length).toBeGreaterThanOrEqual(4);
-    expect(pack.replies).toHaveLength(3);
+    expect(pack.engagementPlan.searchQueries.length).toBeGreaterThanOrEqual(8);
+    expect(pack.engagementPlan.dailyRoutine.join('\n')).toContain('Reply to 8-12');
+    expect(pack.replies.length).toBeGreaterThanOrEqual(10);
     expect(pack.editorChecklist.join('\n')).toContain('screenshot');
     expect(pack.warnings.join('\n')).toContain('Draft-only');
     expect(pack.sourceSignals.join('\n')).toContain('Commit abc1234');
@@ -117,6 +140,8 @@ describe('twitter agent helpers', () => {
     expect(text).toContain('## Short Posts');
     expect(text).toContain('## Thread');
     expect(text).toContain('## Demo Idea');
+    expect(text).toContain('## Engagement Plan');
+    expect(text).toContain('## Suggested Replies');
     expect(text).toContain('## Editor Checklist');
     expect(text).toContain('## Warnings');
   });
@@ -174,5 +199,6 @@ function signals(): RepoSignals {
       averageChars: 120,
       traits: ['mostly first-person', 'anchored in concrete memory sources'],
     },
+    replyTargets: [],
   };
 }

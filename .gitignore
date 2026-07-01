@@ -14,4 +14,5 @@ test-new-*
 store/dist/
 content/twitter/drafts/*
 !content/twitter/drafts/.gitkeep
+content/twitter/reply-targets.local.md
 content/twitter/voice-samples.local.md

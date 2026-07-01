@@ -22,6 +22,7 @@ export type RepoSignals = {
   recentCommits: GitCommit[];
   profileContext?: string;
   voiceSamples?: VoiceSampleSignals;
+  replyTargets: ReplyTarget[];
 };
 
 export type VoiceSampleSignals = {
@@ -47,12 +48,25 @@ export type DemoIdea = {
   caption: string;
 };
 
+export type ReplyTarget = {
+  url?: string;
+  context: string;
+  angle?: string;
+};
+
+export type EngagementPlan = {
+  dailyRoutine: string[];
+  searchQueries: string[];
+  replyTargets: ReplyTarget[];
+};
+
 export type TwitterDraftPack = {
   date: string;
   sourceSignals: string[];
   shortPosts: TweetDraft[];
   thread: ThreadDraft;
   demoIdea: DemoIdea;
+  engagementPlan: EngagementPlan;
   replies: TweetDraft[];
   warnings: string[];
   editorChecklist: string[];
@@ -81,6 +95,8 @@ const DEFAULT_OUT_DIR = 'content/twitter/drafts';
 const DEFAULT_VALUE_PROP = 'Clip anything into agent-ready memory.';
 const PROFILE_CONTEXT_PATH = 'content/twitter/profile-context.md';
 const VOICE_SAMPLES_PATH = 'content/twitter/voice-samples.local.md';
+const REPLY_TARGETS_PATH = 'content/twitter/reply-targets.local.md';
+const STORE_URL = 'https://chromewebstore.google.com/detail/clipbrain/gmoehecpamcidfjdeonfigjenpjbbjoa';
 
 export function parseArgs(argv: string[]): TwitterAgentOptions & { help?: boolean } {
   const opts: TwitterAgentOptions & { help?: boolean } = {};
@@ -119,11 +135,12 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
   const commitLimit = opts.commitLimit || DEFAULT_COMMIT_LIMIT;
   const commandRunner = opts.commandRunner || runCommand;
 
-  const [readme, changelog, profileContext, voiceSamples, gitLog] = await Promise.all([
+  const [readme, changelog, profileContext, voiceSamples, replyTargets, gitLog] = await Promise.all([
     readRepoFile(cwd, 'README.md'),
     readRepoFile(cwd, 'CHANGELOG.md'),
     readRepoFile(cwd, PROFILE_CONTEXT_PATH),
     readRepoFile(cwd, VOICE_SAMPLES_PATH),
+    readRepoFile(cwd, REPLY_TARGETS_PATH),
     commandRunner(['git', 'log', '--oneline', '-n', String(commitLimit)], cwd)
       .then(result => result.exitCode === 0 ? result.stdout : ''),
   ]);
@@ -136,6 +153,7 @@ export async function collectRepoSignals(opts: TwitterAgentOptions = {}): Promis
     recentCommits: parseGitLog(gitLog),
     profileContext,
     voiceSamples: parseVoiceSamples(voiceSamples),
+    replyTargets: parseReplyTargets(replyTargets),
   };
 }
 
@@ -241,23 +259,8 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
     caption: 'A bookmark is inert. A ClipBrain capture becomes context your agent can use.',
   };
 
-  const replies: TweetDraft[] = [
-    {
-      label: 'Reply to agent tooling discussion',
-      why: 'Adds a useful angle without hijacking the thread.',
-      text: 'Very cool. Tools let agents act, but memory tells them what matters to you. That is the gap I am building toward with ClipBrain: clip the internet once, then let your AI pull cited context later.',
-    },
-    {
-      label: 'Reply to second brain discussion',
-      why: 'Positions ClipBrain as agent-native, not another notes app.',
-      text: 'Exactly. The shift is from "a place I can search later" to "context my agents can use now." Same Kindle highlights, blogs, posts, videos. Totally different product bar.',
-    },
-    {
-      label: 'Reply to local-first AI discussion',
-      why: 'Keeps privacy/local-first as a product quality point.',
-      text: 'Local-first should still feel magical. I want setup, capture, retrieval, and citations to feel fast enough that owning the memory layer does not feel like a tax.',
-    },
-  ];
+  const engagementPlan = buildEngagementPlan(signals);
+  const replies = buildReplyDrafts(signals);
 
   return {
     date: signals.date,
@@ -265,6 +268,7 @@ export function generateDraftPack(signals: RepoSignals): TwitterDraftPack {
     shortPosts,
     thread,
     demoIdea,
+    engagementPlan,
     replies,
     warnings: buildWarnings(shortPosts, thread, replies),
     editorChecklist: [
@@ -314,6 +318,20 @@ export function formatDraftPackMarkdown(pack: TwitterDraftPack): string {
     ...pack.demoIdea.steps.map((step, index) => `${index + 1}. ${step}`),
     '',
     `Caption: ${pack.demoIdea.caption}`,
+    '',
+    '## Engagement Plan',
+    '',
+    '### Daily Routine',
+    '',
+    ...pack.engagementPlan.dailyRoutine.map(item => `- ${item}`),
+    '',
+    '### Search Queries',
+    '',
+    ...pack.engagementPlan.searchQueries.map(query => `- \`${query}\``),
+    '',
+    '### Reply Targets',
+    '',
+    ...formatReplyTargets(pack.engagementPlan.replyTargets),
     '',
     '## Suggested Replies',
     '',
@@ -409,6 +427,139 @@ export function parseVoiceSamples(markdown: string): VoiceSampleSignals | undefi
   };
 }
 
+export function parseReplyTargets(markdown: string): ReplyTarget[] {
+  return markdown
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.startsWith('- '))
+    .map(line => line.replace(/^- /, '').trim())
+    .map(line => {
+      const url = line.match(/https?:\/\/\S+/)?.[0];
+      const withoutUrl = url ? line.replace(url, '').trim() : line;
+      const cleaned = withoutUrl
+        .replace(/^[-:| ]+/, '')
+        .replace(/[-:| ]+$/, '')
+        .trim();
+      const [context, angle] = cleaned.split(/\s+\|\s+/, 2).map(part => part.trim());
+      return {
+        url,
+        context: context || 'Public X conversation',
+        angle,
+      };
+    })
+    .filter(target => target.url || target.context);
+}
+
+function buildEngagementPlan(signals: RepoSignals): EngagementPlan {
+  return {
+    dailyRoutine: [
+      'Post 1 original idea or product proof before the first reply session.',
+      'Reply to 8-12 relevant conversations without links; make the other thread better first.',
+      'Use at most 1-2 link replies per day, only when the thread asks for a tool or demo.',
+      'Save strong replies that get traction back into the voice sample file later.',
+      'End the day by adding promising tweet URLs to content/twitter/reply-targets.local.md.',
+    ],
+    searchQueries: [
+      '"MCP" "memory"',
+      '"Claude Code" "memory"',
+      '"Codex" "MCP"',
+      '"AI agents" "context"',
+      '"local-first AI"',
+      '"personal knowledge base" "LLM"',
+      '"Kindle highlights" "AI"',
+      '"Readwise" "agents"',
+      '"Obsidian" "MCP"',
+      '"GBrain" OR "OpenClaw"',
+    ],
+    replyTargets: signals.replyTargets,
+  };
+}
+
+function buildReplyDrafts(signals: RepoSignals): TweetDraft[] {
+  const targetReplies = signals.replyTargets.slice(0, 4).map((target, index) => ({
+    label: `Target reply ${index + 1}`,
+    why: target.url
+      ? `Draft against saved target: ${target.url}`
+      : 'Draft against a saved local reply target.',
+    text: [
+      target.angle || 'This is close to the problem I keep thinking about.',
+      '',
+      'The missing layer is not just more tools.',
+      'It is trusted context from what you already read, saved, clipped, or highlighted.',
+    ].join('\n'),
+  }));
+
+  return [
+    ...targetReplies,
+    {
+      label: 'Reply to agent tooling discussion',
+      why: 'Adds a useful angle without hijacking the thread.',
+      text: 'Very cool. Tools let agents act, but memory tells them what matters to you. That is the gap I keep coming back to: agents need context from what you already read and saved.',
+    },
+    {
+      label: 'Reply to second brain discussion',
+      why: 'Positions ClipBrain as agent-native, not another notes app.',
+      text: 'Exactly. The shift is from "a place I can search later" to "context my agents can use now." Same Kindle highlights, blogs, posts, videos. Different product bar.',
+    },
+    {
+      label: 'Reply to local-first AI discussion',
+      why: 'Keeps privacy/local-first as a product quality point.',
+      text: 'Local-first should still feel magical. I want setup, capture, retrieval, and citations to feel fast enough that owning the memory layer does not feel like a tax.',
+    },
+    {
+      label: 'Reply to MCP discussion',
+      why: 'Connects MCP to durable context instead of only tool calls.',
+      text: 'MCP gets much more interesting when the server is not just a tool wrapper, but a memory boundary. The agent can ask for cited context instead of making the user rebuild it in the prompt.',
+    },
+    {
+      label: 'Reply to Codex or Claude Code workflow',
+      why: 'Bridges coding-agent workflows to personal context.',
+      text: 'The part I want for Codex/Claude Code is simple: when I ask for work, the agent should be able to pull context from things I already read, not only from files in the repo.',
+    },
+    {
+      label: 'Reply to Kindle highlights',
+      why: 'Turns reader workflows into a concrete wedge.',
+      text: 'Kindle highlights are underrated agent memory. You already filtered the book once with your attention. The next step is making those highlights usable by the AI doing work with you.',
+    },
+    {
+      label: 'Reply to Readwise or note-taking thread',
+      why: 'Uses a familiar analogy while clarifying the agent-native angle.',
+      text: 'Readwise made highlights easier to revisit. The agent-native version is different: can my AI retrieve the exact highlight, cite it, and use it while helping me think or build?',
+    },
+    {
+      label: 'Reply to GBrain or OpenClaw discussion',
+      why: 'Credits the underlying engine and places ClipBrain as capture/workflow layer.',
+      text: 'GBrain is the important primitive here: local knowledge that agents can query. ClipBrain is me trying to make the capture side feel natural enough that the memory actually gets fed.',
+    },
+    {
+      label: 'Reply with product link',
+      why: 'Use sparingly when someone asks for a tool, demo, or implementation.',
+      text: [
+        'This is exactly the workflow I built ClipBrain for:',
+        '',
+        'clip once -> store locally -> let MCP agents pull cited context later.',
+        '',
+        STORE_URL,
+      ].join('\n'),
+    },
+    {
+      label: 'Reply to privacy concern',
+      why: 'Answers trust objections without sounding defensive.',
+      text: 'Totally. I do not want a hosted memory cloud either. My preferred shape is: browser extension captures, local server stores, MCP exposes context to the tools I already use.',
+    },
+    {
+      label: 'Reply to generic AI memory take',
+      why: 'Raises the bar from vague memory to source-grounded memory.',
+      text: 'The word "memory" gets fuzzy fast. The bar I care about is: can the agent retrieve the source, quote the relevant part, cite it, and show what related reading I saved?',
+    },
+    {
+      label: 'Reply to builder asking what to demo',
+      why: 'Creates conversation without forcing a product pitch.',
+      text: 'The most convincing demo is usually tiny: save one thing, ask one real question, show the source coming back. If that loop feels obvious, the product has a shot.',
+    },
+  ];
+}
+
 function formatSourceSignals(signals: RepoSignals): string[] {
   const sourceSignals = [`Value prop: ${signals.valueProp}`];
   const profileSummary = summarizeProfileContext(signals.profileContext);
@@ -419,6 +570,9 @@ function formatSourceSignals(signals: RepoSignals): string[] {
   }
 
   if (signals.topic) sourceSignals.push(`Topic: ${signals.topic}`);
+  if (signals.replyTargets.length > 0) {
+    sourceSignals.push(`Reply targets: ${signals.replyTargets.length} local target(s) from ${REPLY_TARGETS_PATH}`);
+  }
 
   if (signals.latestChangelog) {
     const note = truncateForSignal(signals.latestChangelog.notes[0] || 'latest release notes available');
@@ -572,6 +726,26 @@ function buildWarnings(shortPosts: TweetDraft[], thread: ThreadDraft, replies: T
   }
 
   return warnings;
+}
+
+function formatReplyTargets(targets: ReplyTarget[]): string[] {
+  if (targets.length === 0) {
+    return [
+      `No saved reply targets found. Add public tweet URLs or notes to ${REPLY_TARGETS_PATH}.`,
+      '',
+      'Example:',
+      '- https://x.com/someone/status/123456789 | Bridge MCP tools to memory with source-grounded context.',
+    ];
+  }
+
+  return targets.map((target, index) => {
+    const parts = [
+      `${index + 1}. ${target.context}`,
+      target.url ? `URL: ${target.url}` : undefined,
+      target.angle ? `Angle: ${target.angle}` : undefined,
+    ].filter(Boolean);
+    return parts.join('\n   ');
+  });
 }
 
 function formatDraftTitle(index: number, draft: TweetDraft): string {

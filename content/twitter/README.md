@@ -23,7 +23,8 @@ personal founder voice, or content that should be reviewed before posting.
 
 1. Build something real in ClipBrain.
 2. Run `bun run twitter:draft`.
-3. Review the generated short posts, thread, demo idea, replies, and warnings.
+3. Review the generated short posts, thread, demo idea, engagement plan,
+   reply queue, and warnings.
 4. Edit by hand.
 5. Post manually.
 
@@ -46,6 +47,41 @@ packs.
 Only use public posts/replies or an explicit export you are comfortable using
 for drafting. Do not paste DMs, notifications, private emails, customer content,
 or private captures into the voice sample file.
+
+## Reply and engagement workflow
+
+Replies are the main distribution loop for a small or recently quiet account.
+Before running the agent, collect promising public conversations into a local
+target file:
+
+```bash
+cp content/twitter/reply-targets.example.md content/twitter/reply-targets.local.md
+```
+
+Add one target per bullet:
+
+```text
+- https://x.com/someone/status/123456789 | Bridge MCP tools to memory with source-grounded context.
+- Thread about local-first AI | Emphasize that local-first should still feel magical.
+```
+
+Then run:
+
+```bash
+bun run twitter:draft -- --topic "Chrome Web Store launch"
+```
+
+The generated pack includes:
+
+- Search queries for finding relevant conversations
+- A daily reply routine
+- Saved reply targets
+- A queue of reusable replies across MCP, local-first AI, agent memory,
+  Kindle highlights, Readwise/Obsidian, GBrain, and product-link situations
+
+Use links sparingly. Most replies should improve the thread without linking to
+ClipBrain. Save links for moments where someone is explicitly asking for a
+tool, demo, or implementation.
 
 ## Useful options
 
