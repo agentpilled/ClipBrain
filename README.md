@@ -4,7 +4,7 @@
 
 ClipBrain is an open source, local-first memory layer for AI agents. Clip web pages, Kindle highlights, Gmail threads, YouTube transcripts, and PDFs into a searchable knowledge base that your AI tools can use through MCP.
 
-[Website](https://agentpilled.github.io/ClipBrain/) · [Chrome Web Store submission kit](store/LISTING.md) · [Privacy](PRIVACY.md)
+[Install extension](https://chromewebstore.google.com/detail/clipbrain/gmoehecpamcidfjdeonfigjenpjbbjoa) · [Website](https://agentpilled.github.io/ClipBrain/docs/) · [Privacy](PRIVACY.md)
 
 Built on top of [@garrytan](https://twitter.com/garrytan)'s [GBrain](https://github.com/nichochar/gbrain) knowledge engine. Inspired by [@karpathy](https://twitter.com/karpathy)'s [post about building personal knowledge bases with LLMs](https://x.com/karpathy/status/20398050659526644595).
 
@@ -37,11 +37,11 @@ compact summary/atom page and stores the raw source in searchable
 
 ## Get started
 
-You need [Bun](https://bun.sh) and Chrome.
+You need [Bun](https://bun.sh), Chrome, and the [ClipBrain extension](https://chromewebstore.google.com/detail/clipbrain/gmoehecpamcidfjdeonfigjenpjbbjoa).
 
 ```bash
-git clone https://github.com/agentpilled/clipbrain
-cd clipbrain
+git clone https://github.com/agentpilled/ClipBrain
+cd ClipBrain
 ./setup.sh
 bun run doctor
 ```
@@ -50,11 +50,13 @@ This single command installs dependencies, ensures the `gbrain` CLI is available
 
 `bun run doctor` verifies the local server, Chrome extension assets, `gbrain`, MCP setup, and optional enrichment integrations.
 
-Then load the Chrome extension:
+Then install the Chrome extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/clipbrain/gmoehecpamcidfjdeonfigjenpjbbjoa).
+
+For local extension development, you can still load the repo folder unpacked:
 
 1. Go to `chrome://extensions`
 2. Turn on **Developer mode** (top right)
-3. Click **Load unpacked** and select the `clipbrain` folder
+3. Click **Load unpacked** and select the `ClipBrain` folder
 
 Done. Press **Cmd+Shift+S** on any page.
 

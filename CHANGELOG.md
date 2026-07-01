@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Published ClipBrain on the Chrome Web Store and updated the public README,
+landing page, and store kit with the live install link.
+
 Added a draft-only Twitter/X agent for building in public from real repo
 progress. `bun run twitter:draft` reads public project signals and writes a
 local, gitignored daily draft pack with short posts, a thread, a demo idea,
